@@ -1,0 +1,243 @@
+"""OhShip MCP server — stdio (API key) or Streamable HTTP (OAuth)."""
+
+from __future__ import annotations
+
+import asyncio
+import os
+
+from pydantic import AnyHttpUrl
+
+from mcp.server.auth.middleware.auth_context import get_access_token
+from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
+from mcp.server.mcpserver import MCPServer
+
+from ohship.config import settings
+from ohship.mcp.api_client import OhShipAPIClient, OhShipAPIError, format_result
+from ohship.oauth.provider import MCP_SCOPE
+from ohship.oauth.token_verifier import OhShipTokenVerifier
+
+
+def _client() -> OhShipAPIClient:
+    """Build API client from OAuth context (HTTP) or env (stdio)."""
+    token = None
+    try:
+        access = get_access_token()
+        if access and access.token:
+            token = access.token
+    except Exception:
+        token = None
+
+    return OhShipAPIClient(
+        base_url=settings.api_url,
+        access_token=token,
+        organization_id=os.environ.get("OHSHIP_ORG_ID") or None,
+    )
+
+
+def _error_message(e: Exception) -> str:
+    if isinstance(e, OhShipAPIError):
+        return f"Error ({e.status_code}): {e.message}"
+    return f"Error: {e}"
+
+
+def create_mcp_server(*, enable_oauth: bool = False) -> MCPServer:
+    """Create MCP server. enable_oauth=True for Streamable HTTP with OAuth RS mode."""
+    kwargs: dict = {
+        "name": "ohship",
+        "instructions": (
+            "OhShip — Plan → Approve → Done. "
+            "Authenticate via OAuth (email/Google) over HTTP, or API key for stdio. "
+            "Call list_orgs to discover organization IDs before creating/listing plans."
+        ),
+    }
+    if enable_oauth:
+        kwargs["token_verifier"] = OhShipTokenVerifier()
+        kwargs["auth"] = AuthSettings(
+            issuer_url=AnyHttpUrl(settings.api_url.rstrip("/") + "/"),
+            resource_server_url=AnyHttpUrl(settings.api_url.rstrip("/") + "/mcp"),
+            required_scopes=[MCP_SCOPE],
+            client_registration_options=ClientRegistrationOptions(
+                enabled=True,
+                valid_scopes=[MCP_SCOPE],
+                default_scopes=[MCP_SCOPE],
+            ),
+        )
+        # AS routes are mounted on FastAPI separately; MCP is resource server only.
+
+    mcp = MCPServer(**kwargs)
+    _register_tools(mcp)
+    return mcp
+
+
+def _register_tools(mcp: MCPServer) -> None:
+    @mcp.tool()
+    def whoami() -> str:
+        """Show the authenticated MCP identity (OAuth subject or API key user)."""
+        try:
+            access = get_access_token()
+            if access:
+                return format_result(
+                    {
+                        "client_id": access.client_id,
+                        "subject": access.subject,
+                        "scopes": access.scopes,
+                        "claims": access.claims,
+                    }
+                )
+        except Exception:
+            pass
+        return format_result({"auth": "stdio/env", "hint": "Using OHSHIP_API_KEY / OHSHIP_ACCESS_TOKEN"})
+
+    @mcp.tool()
+    def list_orgs() -> str:
+        """List organizations for the authenticated user."""
+        try:
+            return format_result(_client().list_orgs())
+        except Exception as e:
+            return _error_message(e)
+
+    @mcp.tool()
+    def create_plan(
+        title: str,
+        intent: str,
+        acceptance_criteria: str,
+        scope: str | None = None,
+        team: str | None = None,
+        project: str | None = None,
+        organization_id: str | None = None,
+    ) -> str:
+        """Create a new Plan in draft status."""
+        try:
+            return format_result(
+                _client().create_plan(
+                    title,
+                    intent,
+                    acceptance_criteria,
+                    scope,
+                    team,
+                    project,
+                    organization_id,
+                )
+            )
+        except Exception as e:
+            return _error_message(e)
+
+    @mcp.tool()
+    def update_plan(
+        plan_id: str,
+        title: str | None = None,
+        intent: str | None = None,
+        scope: str | None = None,
+        acceptance_criteria: str | None = None,
+        team: str | None = None,
+        project: str | None = None,
+    ) -> str:
+        """Update an editable Plan (draft or changes_requested)."""
+        try:
+            return format_result(
+                _client().update_plan(
+                    plan_id,
+                    title=title,
+                    intent=intent,
+                    scope=scope,
+                    acceptance_criteria=acceptance_criteria,
+                    team=team,
+                    project=project,
+                )
+            )
+        except Exception as e:
+            return _error_message(e)
+
+    @mcp.tool()
+    def submit_for_review(plan_id: str) -> str:
+        """Submit a Plan for review."""
+        try:
+            return format_result(_client().submit_for_review(plan_id))
+        except Exception as e:
+            return _error_message(e)
+
+    @mcp.tool()
+    def add_suggestion(plan_id: str, content: str) -> str:
+        """Add a suggestion or comment to a Plan."""
+        try:
+            return format_result(_client().add_suggestion(plan_id, content))
+        except Exception as e:
+            return _error_message(e)
+
+    @mcp.tool()
+    def approve_plan(plan_id: str) -> str:
+        """Approve a Plan that is in review."""
+        try:
+            return format_result(_client().approve_plan(plan_id))
+        except Exception as e:
+            return _error_message(e)
+
+    @mcp.tool()
+    def request_changes(plan_id: str, content: str | None = None) -> str:
+        """Request changes on a Plan in review, optionally with a comment."""
+        try:
+            return format_result(_client().request_changes(plan_id, content))
+        except Exception as e:
+            return _error_message(e)
+
+    @mcp.tool()
+    def claim_plan(plan_id: str) -> str:
+        """Claim an approved Plan and move it to in_progress."""
+        try:
+            return format_result(_client().claim_plan(plan_id))
+        except Exception as e:
+            return _error_message(e)
+
+    @mcp.tool()
+    def post_done(
+        plan_id: str,
+        summary: str,
+        links_json: str = "[]",
+        residual_notes: str | None = None,
+    ) -> str:
+        """Post a Done summary. links_json is a JSON array of {type, url, label}."""
+        import json
+
+        try:
+            links = json.loads(links_json) if links_json else []
+            return format_result(_client().post_done(plan_id, summary, links, residual_notes))
+        except Exception as e:
+            return _error_message(e)
+
+    @mcp.tool()
+    def get_plan(plan_id: str) -> str:
+        """Get full Plan details including markdown, suggestions, and Done."""
+        try:
+            return format_result(_client().get_plan(plan_id))
+        except Exception as e:
+            return _error_message(e)
+
+    @mcp.tool()
+    def list_plans(
+        status: str | None = None,
+        owner_id: str | None = None,
+        team: str | None = None,
+        project: str | None = None,
+        claimed_by: str | None = None,
+        organization_id: str | None = None,
+    ) -> str:
+        """List Plans with optional filters."""
+        try:
+            return format_result(
+                _client().list_plans(status, owner_id, team, project, claimed_by, organization_id)
+            )
+        except Exception as e:
+            return _error_message(e)
+
+
+# Default stdio instance (API key / env auth)
+mcp = create_mcp_server(enable_oauth=False)
+
+
+def main() -> None:
+    """stdio entrypoint for local Cursor config with API keys."""
+    asyncio.run(mcp.run_stdio_async())
+
+
+if __name__ == "__main__":
+    main()

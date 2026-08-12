@@ -1,0 +1,60 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "postgres: up",
+      "type": "shell",
+      "command": "docker compose up -d postgres",
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "backend: migrate",
+      "type": "shell",
+      "command": "uv run alembic upgrade head",
+      "options": {
+        "cwd": "${workspaceFolder}/backend",
+        "env": {
+          "DATABASE_URL": "postgresql://ohship:ohship@localhost:5433/ohship"
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "backend: seed",
+      "type": "shell",
+      "command": "uv run python -m ohship.scripts.seed",
+      "options": {
+        "cwd": "${workspaceFolder}/backend",
+        "env": {
+          "DATABASE_URL": "postgresql://ohship:ohship@localhost:5433/ohship"
+        }
+      },
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    },
+    {
+      "label": "dev: prepare",
+      "dependsOrder": "sequence",
+      "dependsOn": ["postgres: up", "backend: migrate"],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "shared"
+      }
+    }
+  ]
+}

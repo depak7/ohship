@@ -1,0 +1,23 @@
+# Environment
+.env
+.env.local
+*.pyc
+__pycache__/
+.venv/
+node_modules/
+.next/
+dist/
+*.db
+
+# OS
+.DS_Store
+
+# Python
+*.egg-info/
+.pytest_cache/
+
+# IDE
+.idea/
+
+# Local MCP config (examples are tracked)
+.cursor/mcp.json

@@ -1,0 +1,14 @@
+{
+  "mcpServers": {
+    "ohship": {
+      "command": "uv",
+      "args": ["run", "ohship-mcp"],
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "OHSHIP_API_URL": "http://localhost:8000",
+        "OHSHIP_API_KEY": "your-api-key-here",
+        "OHSHIP_ORG_ID": "your-organization-uuid"
+      }
+    }
+  }
+}

@@ -1,0 +1,120 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
+import { api, Organization, UserBrief } from "@/lib/api";
+import { clearSession, getOrgId, getToken, setOrgId } from "@/lib/auth";
+import { Button, Select } from "@/components/ui";
+
+export function AppShell({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const [user, setUser] = useState<UserBrief | null>(null);
+  const [orgs, setOrgs] = useState<Organization[]>([]);
+  const [orgId, setLocalOrgId] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!getToken()) {
+      router.replace("/login");
+      return;
+    }
+    (async () => {
+      try {
+        const [me, orgList] = await Promise.all([api.me(), api.listOrgs()]);
+        setUser(me);
+        setOrgs(orgList);
+        const saved = getOrgId();
+        const selected =
+          (saved && orgList.find((o) => o.id === saved)?.id) || orgList[0]?.id || null;
+        if (selected) {
+          setOrgId(selected);
+          setLocalOrgId(selected);
+        } else if (!pathname.startsWith("/orgs")) {
+          router.replace("/orgs/new");
+        }
+      } catch {
+        clearSession();
+        router.replace("/login");
+      } finally {
+        setLoading(false);
+      }
+    })();
+  }, [router, pathname]);
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-[var(--muted)]">
+        Loading workspace…
+      </div>
+    );
+  }
+
+  const currentOrg = orgs.find((o) => o.id === orgId);
+
+  return (
+    <div className="grain min-h-screen">
+      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_88%,white)] backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+          <div className="flex items-center gap-6">
+            <Link href="/" className="text-lg font-semibold tracking-tight">
+              OhShip
+            </Link>
+            <nav className="hidden items-center gap-4 text-sm text-[var(--muted)] sm:flex">
+              <Link href="/" className={pathname === "/" ? "text-[var(--ink)]" : ""}>
+                Plans
+              </Link>
+              <Link
+                href="/orgs"
+                className={pathname.startsWith("/orgs") ? "text-[var(--ink)]" : ""}
+              >
+                Organization
+              </Link>
+            </nav>
+          </div>
+          <div className="flex items-center gap-3">
+            {orgs.length > 0 && (
+              <Select
+                value={orgId || ""}
+                onChange={(e) => {
+                  setOrgId(e.target.value);
+                  setLocalOrgId(e.target.value);
+                  router.refresh();
+                  if (pathname !== "/") router.push("/");
+                  else window.location.reload();
+                }}
+              >
+                {orgs.map((o) => (
+                  <option key={o.id} value={o.id}>
+                    {o.name}
+                  </option>
+                ))}
+              </Select>
+            )}
+            <span className="hidden text-sm text-[var(--muted)] md:inline">
+              {user?.name}
+            </span>
+            <Button
+              variant="outline"
+              onClick={() => {
+                clearSession();
+                router.push("/login");
+              }}
+            >
+              Sign out
+            </Button>
+          </div>
+        </div>
+        {currentOrg && (
+          <div className="mx-auto max-w-6xl px-4 pb-3 text-xs text-[var(--muted)]">
+            Viewing <span className="font-medium text-[var(--ink)]">{currentOrg.name}</span>
+            {" · "}
+            all members can see every plan
+          </div>
+        )}
+      </header>
+      <main className="mx-auto max-w-6xl px-4 py-8">{children}</main>
+    </div>
+  );
+}

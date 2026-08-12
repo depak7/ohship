@@ -1,0 +1,14 @@
+{
+  "include": ["backend/src", "backend/tests", "backend/alembic"],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "backend/.venv",
+    "frontend"
+  ],
+  "extraPaths": ["backend/src"],
+  "venvPath": "backend",
+  "venv": ".venv",
+  "pythonVersion": "3.12",
+  "typeCheckingMode": "basic"
+}
