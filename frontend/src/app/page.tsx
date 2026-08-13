@@ -16,6 +16,9 @@ export default function HomePage() {
   const [error, setError] = useState("");
   const [statusFilter, setStatusFilter] = useState<PlanStatus | "">("");
   const [teamFilter, setTeamFilter] = useState("");
+  const [requestedOfMe, setRequestedOfMe] = useState(false);
+  const [sentToMe, setSentToMe] = useState(false);
+  const [meId, setMeId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!getToken()) {
@@ -27,15 +30,19 @@ export default function HomePage() {
       return;
     }
     loadPlans();
-  }, [router, statusFilter, teamFilter]);
+  }, [router, statusFilter, teamFilter, requestedOfMe, sentToMe]);
 
   async function loadPlans() {
     setLoading(true);
     setError("");
     try {
+      const me = meId ? { id: meId } : await api.me();
+      if (!meId) setMeId(me.id);
       const params: Record<string, string> = {};
       if (statusFilter) params.status = statusFilter;
       if (teamFilter) params.team = teamFilter;
+      if (requestedOfMe) params.reviewer_id = me.id;
+      if (sentToMe) params.handoff_to = "me";
       const data = await api.listPlans(params);
       setPlans(data.plans);
     } catch (e) {
@@ -83,6 +90,26 @@ export default function HomePage() {
               ))}
             </Select>
           </div>
+          <div className="flex items-end">
+            <label className="flex items-center gap-2 pb-2 text-sm text-[var(--muted)]">
+              <input
+                type="checkbox"
+                checked={requestedOfMe}
+                onChange={(e) => setRequestedOfMe(e.target.checked)}
+              />
+              Requested of me
+            </label>
+          </div>
+          <div className="flex items-end">
+            <label className="flex items-center gap-2 pb-2 text-sm text-[var(--muted)]">
+              <input
+                type="checkbox"
+                checked={sentToMe}
+                onChange={(e) => setSentToMe(e.target.checked)}
+              />
+              Sent to me
+            </label>
+          </div>
           <div className="min-w-[200px] flex-1">
             <label className="mb-1 block text-xs font-medium text-[var(--muted)]">Team</label>
             <Input
@@ -116,6 +143,8 @@ export default function HomePage() {
                     {plan.owner.name}
                     {plan.team && ` · ${plan.team}`}
                     {plan.project && ` · ${plan.project}`}
+                    {plan.reviewers && plan.reviewers.length > 0 &&
+                      ` · review: ${plan.reviewers.map((r) => r.name).join(", ")}`}
                   </p>
                 </div>
                 <div className="text-right">

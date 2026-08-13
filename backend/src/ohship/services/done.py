@@ -3,7 +3,8 @@ from uuid import UUID
 
 from sqlmodel import Session, select
 
-from ohship.models import DoneRecord, Plan, PlanStatus, User, utcnow
+from ohship.models import DoneHandoff, DoneRecord, Plan, PlanStatus, User, utcnow
+from ohship.services.orgs import require_membership
 from ohship.services.plans import PlanTransitionError, transition_plan
 
 
@@ -14,6 +15,7 @@ def post_done(
     summary: str,
     links: list[dict[str, Any]],
     residual_notes: str | None = None,
+    handoff_to: list[UUID] | None = None,
 ) -> DoneRecord:
     if plan.status != PlanStatus.in_progress:
         raise PlanTransitionError(
@@ -36,6 +38,21 @@ def post_done(
     )
     session.add(done)
     session.flush()
+
+    if handoff_to:
+        seen: set[UUID] = set()
+        for user_id in handoff_to:
+            if user_id in seen:
+                continue
+            seen.add(user_id)
+            require_membership(session, plan.organization_id, user_id)
+            session.add(
+                DoneHandoff(
+                    done_record_id=done.id,
+                    user_id=user_id,
+                    created_at=utcnow(),
+                )
+            )
 
     transition_plan(session, plan, "post_done", actor)
     session.refresh(done)

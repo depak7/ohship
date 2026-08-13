@@ -2,7 +2,7 @@ import pytest
 from sqlmodel import Session
 
 from ohship.models import Organization, OrgMembership, OrgRole, Plan, PlanStatus, User, utcnow
-from ohship.services.plans import PlanTransitionError, transition_plan
+from ohship.services.plans import PlanTransitionError, add_reviewers, transition_plan
 
 
 @pytest.fixture
@@ -92,3 +92,29 @@ def test_request_changes(session: Session, plan: Plan, reviewer: User):
     assert plan.status == PlanStatus.changes_requested
     transition_plan(session, plan, "submit_for_review", reviewer)
     assert plan.status == PlanStatus.in_review
+
+
+def test_owner_can_approve(session: Session, plan: Plan, owner: User):
+    transition_plan(session, plan, "submit_for_review", owner)
+    transition_plan(session, plan, "approve_plan", owner)
+    assert plan.status == PlanStatus.approved
+    assert plan.approved_by_id == owner.id
+
+
+def test_add_reviewers(session: Session, plan: Plan, owner: User, reviewer: User, org: Organization):
+    session.add(
+        OrgMembership(
+            organization_id=org.id,
+            user_id=reviewer.id,
+            role=OrgRole.member,
+            joined_at=utcnow(),
+        )
+    )
+    session.commit()
+    transition_plan(session, plan, "submit_for_review", owner)
+    add_reviewers(session, plan, owner, [reviewer.id, owner.id])
+    from ohship.models import PlanReviewRequest
+    from sqlmodel import select
+
+    rows = list(session.exec(select(PlanReviewRequest).where(PlanReviewRequest.plan_id == plan.id)).all())
+    assert [row.reviewer_id for row in rows] == [reviewer.id]

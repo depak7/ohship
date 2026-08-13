@@ -6,12 +6,14 @@ from sqlmodel import Session, func, select
 
 from ohship.config import settings
 from ohship.models import (
+    DoneHandoff,
     DoneRecord,
     Invite,
     Organization,
     OrgMembership,
     OrgRole,
     Plan,
+    PlanReviewRequest,
     Suggestion,
     User,
     as_utc,
@@ -172,9 +174,17 @@ def delete_organization(session: Session, org_id: UUID, user_id: UUID) -> None:
             select(Suggestion).where(Suggestion.plan_id.in_(plan_ids))  # type: ignore[attr-defined]
         ).all():
             session.delete(suggestion)
+        for review in session.exec(
+            select(PlanReviewRequest).where(PlanReviewRequest.plan_id.in_(plan_ids))  # type: ignore[attr-defined]
+        ).all():
+            session.delete(review)
         for done in session.exec(
             select(DoneRecord).where(DoneRecord.plan_id.in_(plan_ids))  # type: ignore[attr-defined]
         ).all():
+            for handoff in session.exec(
+                select(DoneHandoff).where(DoneHandoff.done_record_id == done.id)
+            ).all():
+                session.delete(handoff)
             session.delete(done)
         for plan in plans:
             session.delete(plan)

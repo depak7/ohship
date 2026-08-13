@@ -36,6 +36,11 @@ class PlanStatus(str, enum.Enum):
     done = "done"
 
 
+class PlanVisibility(str, enum.Enum):
+    team = "team"
+    anyone = "anyone"
+
+
 class OrgRole(str, enum.Enum):
     owner = "owner"
     member = "member"
@@ -137,6 +142,8 @@ class Plan(SQLModel, table=True):
     )
     approved_by_id: Optional[UUID] = Field(default=None, foreign_key="users.id")
     claimed_by_id: Optional[UUID] = Field(default=None, foreign_key="users.id", index=True)
+    visibility: PlanVisibility = Field(default=PlanVisibility.team, index=True)
+    share_token: Optional[str] = Field(default=None, max_length=64, unique=True, index=True)
     created_at: datetime = Field(
         default_factory=utcnow,
         sa_column=Column(DateTime(timezone=True), nullable=False),
@@ -148,7 +155,27 @@ class Plan(SQLModel, table=True):
 
     organization: Optional[Organization] = Relationship(back_populates="plans")
     suggestions: list["Suggestion"] = Relationship(back_populates="plan")
+    review_requests: list["PlanReviewRequest"] = Relationship(back_populates="plan")
     done_record: Optional["DoneRecord"] = Relationship(back_populates="plan")
+
+
+class PlanReviewRequest(SQLModel, table=True):
+    __tablename__ = "plan_review_requests"
+    __table_args__ = (UniqueConstraint("plan_id", "reviewer_id", name="uq_plan_reviewer"),)
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    plan_id: UUID = Field(foreign_key="plans.id", index=True)
+    reviewer_id: UUID = Field(foreign_key="users.id", index=True)
+    requested_by_id: UUID = Field(foreign_key="users.id")
+    created_at: datetime = Field(
+        default_factory=utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+
+    plan: Optional[Plan] = Relationship(back_populates="review_requests")
+    reviewer: Optional[User] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[PlanReviewRequest.reviewer_id]"}
+    )
 
 
 class Suggestion(SQLModel, table=True):
@@ -186,3 +213,20 @@ class DoneRecord(SQLModel, table=True):
 
     plan: Optional[Plan] = Relationship(back_populates="done_record")
     posted_by: Optional[User] = Relationship()
+    handoffs: list["DoneHandoff"] = Relationship(back_populates="done_record")
+
+
+class DoneHandoff(SQLModel, table=True):
+    __tablename__ = "done_handoffs"
+    __table_args__ = (UniqueConstraint("done_record_id", "user_id", name="uq_done_handoff_user"),)
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    done_record_id: UUID = Field(foreign_key="done_records.id", index=True)
+    user_id: UUID = Field(foreign_key="users.id", index=True)
+    created_at: datetime = Field(
+        default_factory=utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+
+    done_record: Optional[DoneRecord] = Relationship(back_populates="handoffs")
+    user: Optional[User] = Relationship()

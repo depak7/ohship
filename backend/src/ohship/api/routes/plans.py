@@ -10,7 +10,10 @@ from ohship.schemas import (
     PlanDetail,
     PlanListResponse,
     PlanUpdate,
+    PublicPlan,
     RequestChangesBody,
+    ReviewRequestBody,
+    SharePlanBody,
     SuggestionCreate,
 )
 from ohship.services.done import post_done
@@ -18,11 +21,13 @@ from ohship.services.helpers import plan_to_detail, plan_to_summary
 from ohship.services.orgs import require_membership
 from ohship.services.plans import (
     PlanTransitionError,
+    add_reviewers,
     assert_editable,
     get_plan_or_404,
     list_plans,
     transition_plan,
 )
+from ohship.services.share import set_plan_share
 from ohship.services.suggestions import add_suggestion
 
 router = APIRouter(prefix="/plans", tags=["plans"])
@@ -64,8 +69,13 @@ def get_plans(
     team: str | None = None,
     project: str | None = None,
     claimed_by: UUID | None = None,
+    reviewer_id: UUID | None = None,
+    handoff_to: str | None = None,
 ) -> PlanListResponse:
     require_membership(session, organization_id, user.id)
+    handoff_user_id: UUID | None = None
+    if handoff_to == "me":
+        handoff_user_id = user.id
     plans = list_plans(
         session,
         organization_id=organization_id,
@@ -74,6 +84,8 @@ def get_plans(
         team=team,
         project=project,
         claimed_by=claimed_by,
+        reviewer_id=reviewer_id,
+        handoff_to=handoff_user_id,
     )
     return PlanListResponse(
         plans=[plan_to_summary(session, p) for p in plans],
@@ -113,15 +125,48 @@ def _handle_transition(session, plan, action, user):
     try:
         transition_plan(session, plan, action, user)
     except PlanTransitionError as e:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.message) from e
+        raise HTTPException(status_code=e.status_code, detail=e.message) from e
     return plan_to_detail(session, plan)
 
 
 @router.post("/{plan_id}/submit", response_model=PlanDetail)
-def submit_plan(plan_id: UUID, session: DbSession, user: CurrentUser) -> PlanDetail:
+def submit_plan(
+    plan_id: UUID,
+    session: DbSession,
+    user: CurrentUser,
+    body: ReviewRequestBody | None = None,
+) -> PlanDetail:
     plan = get_plan_or_404(session, plan_id)
     _assert_plan_access(session, plan, user.id)
-    return _handle_transition(session, plan, "submit_for_review", user)
+    if plan.status in (PlanStatus.draft, PlanStatus.changes_requested):
+        _handle_transition(session, plan, "submit_for_review", user)
+        plan = get_plan_or_404(session, plan_id)
+    elif plan.status != PlanStatus.in_review:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot request review from status '{plan.status.value}'",
+        )
+    if body and body.reviewer_ids:
+        add_reviewers(session, plan, user, body.reviewer_ids)
+    return plan_to_detail(session, plan)
+
+
+@router.post("/{plan_id}/reviewers", response_model=PlanDetail)
+def request_reviewers(
+    plan_id: UUID,
+    body: ReviewRequestBody,
+    session: DbSession,
+    user: CurrentUser,
+) -> PlanDetail:
+    plan = get_plan_or_404(session, plan_id)
+    _assert_plan_access(session, plan, user.id)
+    if plan.status not in (PlanStatus.draft, PlanStatus.changes_requested, PlanStatus.in_review):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"Cannot request reviewers from status '{plan.status.value}'",
+        )
+    add_reviewers(session, plan, user, body.reviewer_ids)
+    return plan_to_detail(session, plan)
 
 
 @router.post("/{plan_id}/suggestions", response_model=PlanDetail)
@@ -169,6 +214,19 @@ def claim_plan(plan_id: UUID, session: DbSession, user: CurrentUser) -> PlanDeta
     return _handle_transition(session, plan, "claim_plan", user)
 
 
+@router.post("/{plan_id}/share", response_model=PlanDetail)
+def share_plan(
+    plan_id: UUID,
+    body: SharePlanBody,
+    session: DbSession,
+    user: CurrentUser,
+) -> PlanDetail:
+    plan = get_plan_or_404(session, plan_id)
+    _assert_plan_access(session, plan, user.id)
+    set_plan_share(session, plan, body.visibility, rotate=body.rotate)
+    return plan_to_detail(session, plan)
+
+
 @router.post("/{plan_id}/done", response_model=PlanDetail)
 def post_plan_done(
     plan_id: UUID,
@@ -186,6 +244,7 @@ def post_plan_done(
             body.summary,
             [link.model_dump() for link in body.links],
             body.residual_notes,
+            body.handoff_to,
         )
     except PlanTransitionError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.message) from e

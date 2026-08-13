@@ -149,10 +149,20 @@ def _register_tools(mcp: MCPServer) -> None:
             return _error_message(e)
 
     @mcp.tool()
-    def submit_for_review(plan_id: str) -> str:
-        """Submit a Plan for review."""
+    def submit_for_review(plan_id: str, reviewer_ids: str | None = None) -> str:
+        """Request review. Optionally assign teammates as comma-separated reviewer_ids. The owner can still approve."""
         try:
-            return format_result(_client().submit_for_review(plan_id))
+            ids = [part.strip() for part in reviewer_ids.split(",") if part.strip()] if reviewer_ids else None
+            return format_result(_client().submit_for_review(plan_id, ids))
+        except Exception as e:
+            return _error_message(e)
+
+    @mcp.tool()
+    def request_reviewers(plan_id: str, reviewer_ids: str) -> str:
+        """Ask specific teammates to review. reviewer_ids is a comma-separated list of user UUIDs. Also returns agent_prompt to open in their coding agent."""
+        try:
+            ids = [part.strip() for part in reviewer_ids.split(",") if part.strip()]
+            return format_result(_client().request_reviewers(plan_id, ids))
         except Exception as e:
             return _error_message(e)
 
@@ -166,7 +176,7 @@ def _register_tools(mcp: MCPServer) -> None:
 
     @mcp.tool()
     def approve_plan(plan_id: str) -> str:
-        """Approve a Plan that is in review."""
+        """Approve a Plan that is in review. Owner or any teammate can approve."""
         try:
             return format_result(_client().approve_plan(plan_id))
         except Exception as e:
@@ -194,13 +204,25 @@ def _register_tools(mcp: MCPServer) -> None:
         summary: str,
         links_json: str = "[]",
         residual_notes: str | None = None,
+        handoff_to: str | None = None,
     ) -> str:
-        """Post a Done summary. links_json is a JSON array of {type, url, label}."""
+        """Post a Done summary. links_json is a JSON array of {type, url, label}. handoff_to is comma-separated user UUIDs to notify in-app."""
         import json
 
         try:
             links = json.loads(links_json) if links_json else []
-            return format_result(_client().post_done(plan_id, summary, links, residual_notes))
+            ids = [part.strip() for part in handoff_to.split(",") if part.strip()] if handoff_to else None
+            return format_result(
+                _client().post_done(plan_id, summary, links, residual_notes, ids)
+            )
+        except Exception as e:
+            return _error_message(e)
+
+    @mcp.tool()
+    def set_plan_share(plan_id: str, visibility: str, rotate: bool = False) -> str:
+        """Set plan sharing: visibility is 'team' (org only) or 'anyone' (link without login). rotate=true issues a new link."""
+        try:
+            return format_result(_client().set_plan_share(plan_id, visibility, rotate))
         except Exception as e:
             return _error_message(e)
 
@@ -220,11 +242,15 @@ def _register_tools(mcp: MCPServer) -> None:
         project: str | None = None,
         claimed_by: str | None = None,
         organization_id: str | None = None,
+        reviewer_id: str | None = None,
+        handoff_to: str | None = None,
     ) -> str:
-        """List Plans with optional filters."""
+        """List Plans with optional filters. Pass reviewer_id to see plans requested of that user. Pass handoff_to=me (via filter value) for done handoffs."""
         try:
             return format_result(
-                _client().list_plans(status, owner_id, team, project, claimed_by, organization_id)
+                _client().list_plans(
+                    status, owner_id, team, project, claimed_by, organization_id, reviewer_id, handoff_to
+                )
             )
         except Exception as e:
             return _error_message(e)

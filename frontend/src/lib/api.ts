@@ -1,5 +1,7 @@
 import { getApiUrl, getOrgId, getToken } from "./auth";
 
+export type PlanVisibility = "team" | "anyone";
+
 export type PlanStatus =
   | "draft"
   | "in_review"
@@ -48,6 +50,9 @@ export interface PlanSummary {
   team: string | null;
   project: string | null;
   claimed_by: UserBrief | null;
+  reviewers?: UserBrief[];
+  visibility?: PlanVisibility;
+  share_url?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -68,6 +73,7 @@ export interface DoneRecord {
   residual_notes: string | null;
   posted_by: UserBrief;
   posted_at: string;
+  handoff_to?: UserBrief[];
 }
 
 export interface PlanDetail extends PlanSummary {
@@ -79,6 +85,7 @@ export interface PlanDetail extends PlanSummary {
   suggestions: Suggestion[];
   done: DoneRecord | null;
   markdown: string;
+  agent_prompt?: string;
 }
 
 export interface AuthResponse {
@@ -188,8 +195,16 @@ export const api = {
       method: "PATCH",
       body: JSON.stringify(body),
     }),
-  submitPlan: (id: string) =>
-    request<PlanDetail>(`/api/v1/plans/${id}/submit`, { method: "POST" }),
+  submitPlan: (id: string, reviewerIds?: string[]) =>
+    request<PlanDetail>(`/api/v1/plans/${id}/submit`, {
+      method: "POST",
+      body: JSON.stringify({ reviewer_ids: reviewerIds || [] }),
+    }),
+  requestReviewers: (id: string, reviewerIds: string[]) =>
+    request<PlanDetail>(`/api/v1/plans/${id}/reviewers`, {
+      method: "POST",
+      body: JSON.stringify({ reviewer_ids: reviewerIds }),
+    }),
   approvePlan: (id: string) =>
     request<PlanDetail>(`/api/v1/plans/${id}/approve`, { method: "POST" }),
   requestChanges: (id: string, content?: string) =>
@@ -201,12 +216,39 @@ export const api = {
     request<PlanDetail>(`/api/v1/plans/${id}/claim`, { method: "POST" }),
   postDone: (
     id: string,
-    body: { summary: string; links: DoneLink[]; residual_notes?: string }
+    body: {
+      summary: string;
+      links: DoneLink[];
+      residual_notes?: string;
+      handoff_to?: string[];
+    }
   ) =>
     request<PlanDetail>(`/api/v1/plans/${id}/done`, {
       method: "POST",
       body: JSON.stringify(body),
     }),
+  setPlanShare: (
+    id: string,
+    body: { visibility: PlanVisibility; rotate?: boolean }
+  ) =>
+    request<PlanDetail>(`/api/v1/plans/${id}/share`, {
+      method: "POST",
+      body: JSON.stringify(body),
+    }),
+  getPublicPlan: (token: string) =>
+    request<{
+      title: string;
+      status: PlanStatus;
+      owner_name: string;
+      markdown: string;
+      done: {
+        summary: string;
+        links: DoneLink[];
+        residual_notes: string | null;
+        posted_by_name: string;
+        posted_at: string;
+      } | null;
+    }>(`/api/v1/public/plans/${token}`, {}, false),
   addSuggestion: (id: string, content: string) =>
     request<PlanDetail>(`/api/v1/plans/${id}/suggestions`, {
       method: "POST",

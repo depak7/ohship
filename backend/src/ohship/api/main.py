@@ -3,15 +3,19 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import AnyHttpUrl
+from starlette.middleware.authentication import AuthenticationMiddleware
 
+from mcp.server.auth.middleware.auth_context import AuthContextMiddleware
+from mcp.server.auth.middleware.bearer_auth import BearerAuthBackend
 from mcp.server.auth.routes import create_auth_routes
 from mcp.server.auth.settings import ClientRegistrationOptions
 
-from ohship.api.routes import auth, oauth, orgs, plans
+from ohship.api.routes import auth, oauth, orgs, plans, public
 from ohship.config import settings
 from ohship.db import check_db_connection
 from ohship.mcp.server import create_mcp_server
 from ohship.oauth.provider import MCP_SCOPE, oauth_provider
+from ohship.oauth.token_verifier import OhShipTokenVerifier
 
 # MCP resource server (Streamable HTTP + OAuth token verification)
 mcp_http = create_mcp_server(enable_oauth=True)
@@ -24,6 +28,17 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="OhShip API", version="0.1.0", lifespan=lifespan)
+
+# The MCP auth stack: RequireAuthMiddleware rides along on the /mcp route we copy
+# below, but these two live on the sub-app's middleware list, which copying routes
+# drops. AuthenticationMiddleware populates scope["user"] (without it /mcp 401s on
+# every request); AuthContextMiddleware exposes the token to get_access_token().
+# Added first so CORS below ends up outermost.
+app.add_middleware(AuthContextMiddleware)
+app.add_middleware(
+    AuthenticationMiddleware,
+    backend=BearerAuthBackend(OhShipTokenVerifier()),
+)
 
 app.add_middleware(
     CORSMiddleware,
@@ -48,6 +63,7 @@ def health() -> dict:
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(orgs.router, prefix="/api/v1")
 app.include_router(plans.router, prefix="/api/v1")
+app.include_router(public.router, prefix="/api/v1")
 app.include_router(oauth.router, prefix="/api/v1")
 
 # OAuth Authorization Server routes (discovery, register, authorize, token)

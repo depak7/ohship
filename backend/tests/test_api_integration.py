@@ -2,48 +2,10 @@ import os
 
 import pytest
 from fastapi.testclient import TestClient
-from sqlmodel import Session, SQLModel, create_engine
-from sqlmodel.pool import StaticPool
+from sqlmodel import Session
 
-from ohship.api.main import app
 from ohship.auth import hash_api_key
-from ohship.db import get_session
 from ohship.models import Organization, OrgMembership, OrgRole, User, utcnow
-from ohship.services.orgs import create_organization
-
-
-@pytest.fixture(name="session")
-def session_fixture():
-    engine = create_engine(
-        "sqlite://",
-        connect_args={"check_same_thread": False},
-        poolclass=StaticPool,
-    )
-    SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
-        yield session
-
-
-@pytest.fixture(name="client")
-def client_fixture(session: Session):
-    def get_session_override():
-        yield session
-
-    app.dependency_overrides[get_session] = get_session_override
-    client = TestClient(app)
-    yield client
-    app.dependency_overrides.clear()
-
-
-@pytest.fixture(name="user_and_key")
-def user_and_key_fixture(session: Session) -> tuple[User, str, Organization]:
-    key = "dl_test_integration_key"
-    user = User(name="Alice", email="alice@test.com", api_key_hash=hash_api_key(key))
-    session.add(user)
-    session.commit()
-    session.refresh(user)
-    org = create_organization(session, "Acme", user)
-    return user, key, org
 
 
 def auth_headers(api_key: str) -> dict[str, str]:
@@ -111,10 +73,31 @@ def test_signup_and_org_flow(client: TestClient):
     assert preview.json()["organization_name"] == "Bob Corp"
 
 
-def test_plan_lifecycle(client: TestClient, user_and_key: tuple[User, str, Organization]):
+def test_plan_lifecycle(
+    client: TestClient,
+    session: Session,
+    user_and_key: tuple[User, str, Organization],
+):
     os.environ["BOOTSTRAP_TOKEN"] = "dev"
     _, api_key, org = user_and_key
     headers = auth_headers(api_key)
+    reviewer_key = "dl_reviewer_key"
+    reviewer = User(
+        name="Reviewer",
+        email="reviewer@test.com",
+        api_key_hash=hash_api_key(reviewer_key),
+    )
+    session.add(reviewer)
+    session.flush()
+    session.add(
+        OrgMembership(
+            organization_id=org.id,
+            user_id=reviewer.id,
+            role=OrgRole.member,
+            joined_at=utcnow(),
+        )
+    )
+    session.commit()
 
     create = client.post(
         "/api/v1/plans",
@@ -132,9 +115,16 @@ def test_plan_lifecycle(client: TestClient, user_and_key: tuple[User, str, Organ
     assert "markdown" in body
     assert body["organization_id"] == str(org.id)
 
-    submit = client.post(f"/api/v1/plans/{plan_id}/submit", headers=headers)
+    submit = client.post(
+        f"/api/v1/plans/{plan_id}/submit",
+        json={"reviewer_ids": [str(reviewer.id)]},
+        headers=headers,
+    )
     assert submit.status_code == 200
-    assert submit.json()["status"] == "in_review"
+    submitted = submit.json()
+    assert submitted["status"] == "in_review"
+    assert submitted["reviewers"][0]["id"] == str(reviewer.id)
+    assert "get_plan" in submitted["agent_prompt"]
 
     approve = client.post(f"/api/v1/plans/{plan_id}/approve", headers=headers)
     assert approve.status_code == 200

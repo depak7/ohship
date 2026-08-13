@@ -93,8 +93,16 @@ class OhShipAPIClient:
         payload = {k: v for k, v in fields.items() if v is not None}
         return self._request("PATCH", f"/api/v1/plans/{plan_id}", json=payload)
 
-    def submit_for_review(self, plan_id: str) -> dict[str, Any]:
-        return self._request("POST", f"/api/v1/plans/{plan_id}/submit")
+    def submit_for_review(self, plan_id: str, reviewer_ids: list[str] | None = None) -> dict[str, Any]:
+        payload = {"reviewer_ids": reviewer_ids or []}
+        return self._request("POST", f"/api/v1/plans/{plan_id}/submit", json=payload)
+
+    def request_reviewers(self, plan_id: str, reviewer_ids: list[str]) -> dict[str, Any]:
+        return self._request(
+            "POST",
+            f"/api/v1/plans/{plan_id}/reviewers",
+            json={"reviewer_ids": reviewer_ids},
+        )
 
     def add_suggestion(self, plan_id: str, content: str) -> dict[str, Any]:
         return self._request(
@@ -122,6 +130,7 @@ class OhShipAPIClient:
         summary: str,
         links: list[dict[str, str]] | None = None,
         residual_notes: str | None = None,
+        handoff_to: list[str] | None = None,
     ) -> dict[str, Any]:
         return self._request(
             "POST",
@@ -130,7 +139,20 @@ class OhShipAPIClient:
                 "summary": summary,
                 "links": links or [],
                 "residual_notes": residual_notes,
+                "handoff_to": handoff_to or [],
             },
+        )
+
+    def set_plan_share(
+        self,
+        plan_id: str,
+        visibility: str,
+        rotate: bool = False,
+    ) -> dict[str, Any]:
+        return self._request(
+            "POST",
+            f"/api/v1/plans/{plan_id}/share",
+            json={"visibility": visibility, "rotate": rotate},
         )
 
     def get_plan(self, plan_id: str) -> dict[str, Any]:
@@ -144,6 +166,8 @@ class OhShipAPIClient:
         project: str | None = None,
         claimed_by: str | None = None,
         organization_id: str | None = None,
+        reviewer_id: str | None = None,
+        handoff_to: str | None = None,
     ) -> dict[str, Any]:
         params: dict[str, str] = {"organization_id": self._org_id(organization_id)}
         if status:
@@ -156,6 +180,10 @@ class OhShipAPIClient:
             params["project"] = project
         if claimed_by:
             params["claimed_by"] = claimed_by
+        if reviewer_id:
+            params["reviewer_id"] = reviewer_id
+        if handoff_to:
+            params["handoff_to"] = handoff_to
         return self._request("GET", "/api/v1/plans", params=params)
 
 

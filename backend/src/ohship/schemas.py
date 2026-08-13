@@ -4,7 +4,7 @@ from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
 
-from ohship.models import OrgRole, PlanStatus
+from ohship.models import OrgRole, PlanStatus, PlanVisibility
 
 
 class SignupRequest(BaseModel):
@@ -118,10 +118,25 @@ class RequestChangesBody(BaseModel):
     content: Optional[str] = None
 
 
+class ReviewRequestBody(BaseModel):
+    reviewer_ids: list[UUID] = Field(default_factory=list)
+
+
+class ReviewerResponse(UserBrief):
+    requested_by: Optional[UserBrief] = None
+    requested_at: Optional[datetime] = None
+
+
 class DoneCreate(BaseModel):
     summary: str = Field(min_length=1)
     links: list[DoneLink] = Field(default_factory=list)
     residual_notes: Optional[str] = None
+    handoff_to: list[UUID] = Field(default_factory=list)
+
+
+class SharePlanBody(BaseModel):
+    visibility: PlanVisibility
+    rotate: bool = False
 
 
 class SuggestionResponse(BaseModel):
@@ -140,6 +155,7 @@ class DoneResponse(BaseModel):
     residual_notes: Optional[str]
     posted_by: UserBrief
     posted_at: datetime
+    handoff_to: list[UserBrief] = Field(default_factory=list)
 
 
 class PlanSummary(BaseModel):
@@ -153,6 +169,9 @@ class PlanSummary(BaseModel):
     claimed_by: Optional[UserBrief]
     created_at: datetime
     updated_at: datetime
+    reviewers: list[UserBrief] = Field(default_factory=list)
+    visibility: PlanVisibility = PlanVisibility.team
+    share_url: Optional[str] = None
 
 
 class PlanDetail(PlanSummary):
@@ -164,11 +183,28 @@ class PlanDetail(PlanSummary):
     suggestions: list[SuggestionResponse] = Field(default_factory=list)
     done: Optional[DoneResponse] = None
     markdown: str = ""
+    agent_prompt: str = ""
 
 
 class PlanListResponse(BaseModel):
     plans: list[PlanSummary]
     total: int
+
+
+class PublicDoneResponse(BaseModel):
+    summary: str
+    links: list[dict[str, Any]]
+    residual_notes: Optional[str]
+    posted_by_name: str
+    posted_at: datetime
+
+
+class PublicPlan(BaseModel):
+    title: str
+    status: PlanStatus
+    owner_name: str
+    markdown: str
+    done: Optional[PublicDoneResponse] = None
 
 
 class GoogleConfigResponse(BaseModel):

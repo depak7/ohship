@@ -3,12 +3,13 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
 
-from ohship.models import Plan, PlanStatus, User, utcnow
+from ohship.models import DoneHandoff, DoneRecord, Plan, PlanReviewRequest, PlanStatus, User, utcnow
 
 
 class PlanTransitionError(Exception):
-    def __init__(self, message: str):
+    def __init__(self, message: str, status_code: int = status.HTTP_409_CONFLICT):
         self.message = message
+        self.status_code = status_code
         super().__init__(message)
 
 
@@ -63,6 +64,46 @@ def transition_plan(session: Session, plan: Plan, action: str, actor: User | Non
     return plan
 
 
+def add_reviewers(session: Session, plan: Plan, actor: User, reviewer_ids: list[UUID]) -> Plan:
+    from ohship.services.orgs import require_membership
+
+    unique_ids = []
+    seen: set[UUID] = set()
+    for reviewer_id in reviewer_ids:
+        if reviewer_id in seen:
+            continue
+        seen.add(reviewer_id)
+        unique_ids.append(reviewer_id)
+
+    existing = {
+        row.reviewer_id
+        for row in session.exec(
+            select(PlanReviewRequest).where(PlanReviewRequest.plan_id == plan.id)
+        ).all()
+    }
+
+    for reviewer_id in unique_ids:
+        if reviewer_id == actor.id:
+            continue
+        if reviewer_id in existing:
+            continue
+        require_membership(session, plan.organization_id, reviewer_id)
+        session.add(
+            PlanReviewRequest(
+                plan_id=plan.id,
+                reviewer_id=reviewer_id,
+                requested_by_id=actor.id,
+                created_at=utcnow(),
+            )
+        )
+
+    plan.updated_at = utcnow()
+    session.add(plan)
+    session.commit()
+    session.refresh(plan)
+    return plan
+
+
 def list_plans(
     session: Session,
     *,
@@ -72,6 +113,8 @@ def list_plans(
     team: str | None = None,
     project: str | None = None,
     claimed_by: UUID | None = None,
+    reviewer_id: UUID | None = None,
+    handoff_to: UUID | None = None,
 ) -> list[Plan]:
     query = select(Plan).order_by(Plan.updated_at.desc())  # type: ignore[attr-defined]
     if organization_id is not None:
@@ -86,4 +129,12 @@ def list_plans(
         query = query.where(Plan.project == project)
     if claimed_by is not None:
         query = query.where(Plan.claimed_by_id == claimed_by)
+    if reviewer_id is not None:
+        query = query.join(PlanReviewRequest).where(PlanReviewRequest.reviewer_id == reviewer_id)
+    if handoff_to is not None:
+        query = (
+            query.join(DoneRecord, DoneRecord.plan_id == Plan.id)
+            .join(DoneHandoff, DoneHandoff.done_record_id == DoneRecord.id)
+            .where(DoneHandoff.user_id == handoff_to)
+        )
     return list(session.exec(query).all())
