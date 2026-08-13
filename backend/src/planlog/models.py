@@ -251,3 +251,29 @@ class DoneHandoff(SQLModel, table=True):
 
     done_record: Optional[DoneRecord] = Relationship(back_populates="handoffs")
     user: Optional[User] = Relationship()
+
+
+class OAuthClientRecord(SQLModel, table=True):
+    """Persisted MCP OAuth client (DCR). In-memory store is lost on Heroku restart."""
+
+    __tablename__ = "oauth_clients"
+
+    client_id: str = Field(primary_key=True, max_length=128)
+    payload: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
+    created_at: datetime = Field(
+        default_factory=utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+
+
+class OAuthPendingRecord(SQLModel, table=True):
+    """Consent-page state between /authorize and /oauth/approve."""
+
+    __tablename__ = "oauth_pending"
+
+    state: str = Field(primary_key=True, max_length=128)
+    payload: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
+    created_at: datetime = Field(
+        default_factory=utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )

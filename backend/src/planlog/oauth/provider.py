@@ -2,13 +2,15 @@
 
 from __future__ import annotations
 
+import logging
 import secrets
 import time
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from typing import Any
 from uuid import UUID
 
-from pydantic import AnyHttpUrl, AnyUrl
+from pydantic import AnyUrl
+from sqlmodel import Session, select
 
 from mcp.server.auth.provider import (
     AccessToken,
@@ -22,8 +24,47 @@ from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
 
 from planlog.auth import create_access_token, try_decode_access_token
 from planlog.config import settings
+from planlog.db import engine
+from planlog.models import OAuthClientRecord, OAuthPendingRecord
+
+logger = logging.getLogger(__name__)
 
 MCP_SCOPE = "planlog"
+
+# Cursor (and other MCP clients) register a subset of these; authorize uses localhost:8787.
+EXTRA_REDIRECT_URIS = [
+    "http://localhost:8787/callback",
+    "http://127.0.0.1:8787/callback",
+    "cursor://anysphere.cursor-mcp/oauth/callback",
+    "https://www.cursor.com/agents/mcp/oauth/callback",
+]
+
+
+def _parse_url(value: str) -> AnyUrl | None:
+    try:
+        return AnyUrl(value)
+    except Exception:
+        return None
+
+
+def _with_extra_redirects(client: OAuthClientInformationFull) -> OAuthClientInformationFull:
+    existing = [str(u) for u in (client.redirect_uris or [])]
+    merged: list[AnyUrl] = []
+    seen: set[str] = set()
+    for raw in existing + EXTRA_REDIRECT_URIS:
+        if raw in seen:
+            continue
+        parsed = _parse_url(raw)
+        if parsed is None:
+            continue
+        seen.add(raw)
+        merged.append(parsed)
+    client.redirect_uris = merged
+    return client
+
+
+def _db() -> Session:
+    return Session(engine)
 
 
 @dataclass
@@ -50,17 +91,45 @@ class PlanlogOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, R
         self.token_users: dict[str, str] = {}
 
     async def get_client(self, client_id: str) -> OAuthClientInformationFull | None:
-        return self.clients.get(client_id)
+        cached = self.clients.get(client_id)
+        if cached:
+            return _with_extra_redirects(cached)
+        try:
+            with _db() as session:
+                row = session.get(OAuthClientRecord, client_id)
+                if not row:
+                    logger.warning("OAuth client not found: %s", client_id)
+                    return None
+                client = OAuthClientInformationFull.model_validate(row.payload)
+                self.clients[client_id] = client
+                return _with_extra_redirects(client)
+        except Exception:
+            logger.exception("Failed to load OAuth client %s", client_id)
+            return None
 
     async def register_client(self, client_info: OAuthClientInformationFull) -> None:
         if not client_info.client_id:
             raise ValueError("No client_id provided")
+        client_info = _with_extra_redirects(client_info)
         self.clients[client_info.client_id] = client_info
+        try:
+            with _db() as session:
+                existing = session.get(OAuthClientRecord, client_info.client_id)
+                payload = client_info.model_dump(mode="json")
+                if existing:
+                    existing.payload = payload
+                    session.add(existing)
+                else:
+                    session.add(OAuthClientRecord(client_id=client_info.client_id, payload=payload))
+                session.commit()
+        except Exception:
+            logger.exception("Failed to persist OAuth client %s", client_info.client_id)
+        logger.info("Registered OAuth client %s redirects=%s", client_info.client_id, client_info.redirect_uris)
 
     async def authorize(self, client: OAuthClientInformationFull, params: AuthorizationParams) -> str:
         # Internal state for our consent page; preserve client state separately
         consent_state = secrets.token_urlsafe(24)
-        self.pending[consent_state] = PendingAuth(
+        pending = PendingAuth(
             redirect_uri=str(params.redirect_uri),
             code_challenge=params.code_challenge,
             redirect_uri_provided_explicitly=params.redirect_uri_provided_explicitly,
@@ -69,15 +138,57 @@ class PlanlogOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, R
             scopes=params.scopes or [MCP_SCOPE],
             oauth_state=params.state,
         )
+        self.pending[consent_state] = pending
+        try:
+            with _db() as session:
+                session.add(OAuthPendingRecord(state=consent_state, payload=asdict(pending)))
+                session.commit()
+        except Exception:
+            logger.exception("Failed to persist OAuth pending state")
         frontend = settings.frontend_url.rstrip("/")
         return f"{frontend}/oauth/consent?state={consent_state}"
 
     def get_pending(self, state: str) -> PendingAuth | None:
-        return self.pending.get(state)
+        cached = self.pending.get(state)
+        if cached:
+            return cached
+        try:
+            with _db() as session:
+                row = session.get(OAuthPendingRecord, state)
+                if not row:
+                    return None
+                pending = PendingAuth(**row.payload)
+                self.pending[state] = pending
+                return pending
+        except Exception:
+            logger.exception("Failed to load OAuth pending state %s", state)
+            return None
+
+    def _delete_pending(self, state: str) -> None:
+        try:
+            with _db() as session:
+                row = session.get(OAuthPendingRecord, state)
+                if row:
+                    session.delete(row)
+                    session.commit()
+        except Exception:
+            logger.exception("Failed to delete OAuth pending state %s", state)
 
     def complete_login(self, state: str, user_id: UUID) -> str:
         """Create authorization code after user authenticates; return redirect URL for MCP client."""
         pending = self.pending.pop(state, None)
+        if not pending:
+            try:
+                with _db() as session:
+                    row = session.get(OAuthPendingRecord, state)
+                    if row:
+                        pending = PendingAuth(**row.payload)
+                        session.delete(row)
+                        session.commit()
+            except Exception:
+                logger.exception("Failed to load OAuth pending state %s", state)
+        else:
+            self._delete_pending(state)
         if not pending:
             raise ValueError("Invalid or expired OAuth state")
 
