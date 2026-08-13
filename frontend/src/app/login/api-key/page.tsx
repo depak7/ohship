@@ -26,7 +26,7 @@ export default function ApiKeyLoginPage() {
         setError("Invalid API key");
         return;
       }
-      router.push("/");
+      router.push("/plans");
     } catch {
       setError("Could not connect to API");
     }

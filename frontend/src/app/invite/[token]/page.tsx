@@ -34,7 +34,7 @@ function InviteInner() {
     try {
       const org = await api.joinInvite(token);
       setOrgId(org.id);
-      router.push("/");
+      router.push("/plans");
     } catch (e) {
       setError(e instanceof Error ? e.message : "Could not join");
     } finally {
@@ -62,7 +62,7 @@ function InviteInner() {
               <Button onClick={join} disabled={!preview.valid || joining}>
                 {joining ? "Joining…" : getToken() ? "Join organization" : "Sign in to join"}
               </Button>
-              <Link href="/">
+              <Link href="/plans">
                 <Button variant="outline">Cancel</Button>
               </Link>
             </div>

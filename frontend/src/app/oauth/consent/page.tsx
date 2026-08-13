@@ -94,7 +94,7 @@ function ConsentInner() {
               <Button className="flex-1" onClick={approve} disabled={approving}>
                 {approving ? "Allowing…" : "Allow"}
               </Button>
-              <Link href="/" className="flex-1">
+              <Link href="/plans" className="flex-1">
                 <Button variant="outline" className="w-full">
                   Cancel
                 </Button>

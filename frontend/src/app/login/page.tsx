@@ -10,14 +10,20 @@ import { Button, Card, Input, Label } from "@/components/ui";
 function LoginInner() {
   const router = useRouter();
   const params = useSearchParams();
-  const next = params.get("next") || "/";
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const next = params.get("next") || "/plans";
+  const [mode, setMode] = useState<"login" | "signup">(
+    () => (params.get("mode") === "signup" ? "signup" : "login")
+  );
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const [googleEnabled, setGoogleEnabled] = useState(false);
+
+  useEffect(() => {
+    if (params.get("mode") === "signup") setMode("signup");
+  }, [params]);
 
   useEffect(() => {
     if (getToken()) router.replace(next);

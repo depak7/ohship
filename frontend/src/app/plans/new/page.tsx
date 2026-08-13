@@ -69,7 +69,7 @@ function NewPlanForm() {
 
   return (
     <AppShell>
-      <Link href="/" className="mb-4 inline-block text-sm text-[var(--muted)] hover:text-[var(--ink)]">
+      <Link href="/plans" className="mb-4 inline-block text-sm text-[var(--muted)] hover:text-[var(--ink)]">
         ← Back to plans
       </Link>
       <h1 className="mb-2 text-3xl font-semibold tracking-tight">New plan</h1>

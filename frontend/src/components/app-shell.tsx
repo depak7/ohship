@@ -69,7 +69,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     else clearProject();
     setActiveProject(value);
     window.dispatchEvent(new Event("planlog-project-change"));
-    if (pathname !== "/") router.push("/");
+    if (pathname !== "/plans") router.push("/plans");
   }
 
   if (loading) {
@@ -87,11 +87,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_88%,white)] backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-6">
-            <Link href="/" className="text-lg font-semibold tracking-tight">
+            <Link href="/plans" className="text-lg font-semibold tracking-tight">
               Planlog
             </Link>
             <nav className="hidden items-center gap-4 text-sm text-[var(--muted)] sm:flex">
-              <Link href="/" className={pathname === "/" ? "text-[var(--ink)]" : ""}>
+              <Link href="/plans" className={pathname === "/plans" ? "text-[var(--ink)]" : ""}>
                 Plans
               </Link>
               <Link
@@ -114,7 +114,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   const names = await api.listProjects();
                   setProjects(names);
                   router.refresh();
-                  if (pathname !== "/") router.push("/");
+                  if (pathname !== "/plans") router.push("/plans");
                   else window.location.reload();
                 }}
               >

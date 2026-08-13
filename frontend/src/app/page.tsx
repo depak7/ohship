@@ -1,324 +1,182 @@
-"use client";
-
-import { useEffect, useMemo, useState } from "react";
+import type { Metadata } from "next";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { api, PlanStatus, PlanSummary, STATUS_LABELS } from "@/lib/api";
-import { getOrgId, getProject, getToken, setProject, clearProject } from "@/lib/auth";
-import { AppShell } from "@/components/app-shell";
-import { Button, Card, Select } from "@/components/ui";
-import { PlanStatusBadge } from "@/components/plan-panels";
+import { Button } from "@/components/ui";
+import { InstallCommand, INSTALL_COMMAND } from "@/components/install-command";
+import { LandingRedirect } from "@/components/landing-redirect";
 
-const ALL_PROJECTS = "";
+export const metadata: Metadata = {
+  title: "Planlog — Plan → Approve → Done",
+  description:
+    "Markdown plans humans and coding agents share. Agents read the plan before coding and post Done when they ship.",
+};
 
-export default function HomePage() {
-  const router = useRouter();
-  const [plans, setPlans] = useState<PlanSummary[]>([]);
-  const [projects, setProjects] = useState<string[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-  const [statusFilter, setStatusFilter] = useState<PlanStatus | "">("");
-  const [projectFilter, setProjectFilter] = useState<string>(() => getProject() || "");
-  const [requestedOfMe, setRequestedOfMe] = useState(false);
-  const [sentToMe, setSentToMe] = useState(false);
-  const [meId, setMeId] = useState<string | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!getToken()) {
-      router.replace("/login");
-      return;
-    }
-    if (!getOrgId()) {
-      router.replace("/orgs/new");
-      return;
-    }
-    loadPlans();
-
-    function onProjectChange() {
-      setProjectFilter(getProject() || "");
-    }
-    window.addEventListener("planlog-project-change", onProjectChange);
-    return () => window.removeEventListener("planlog-project-change", onProjectChange);
-  }, [router, statusFilter, projectFilter, requestedOfMe, sentToMe]);
-
-  async function loadPlans() {
-    setLoading(true);
-    setError("");
-    try {
-      const me = meId ? { id: meId } : await api.me();
-      if (!meId) setMeId(me.id);
-      const [projectList, data] = await Promise.all([
-        api.listProjects(),
-        api.listPlans({
-          ...(statusFilter ? { status: statusFilter } : {}),
-          ...(projectFilter ? { project: projectFilter } : {}),
-          ...(requestedOfMe ? { reviewer_id: me.id } : {}),
-          ...(sentToMe ? { handoff_to: "me" } : {}),
-        }),
-      ]);
-      setProjects(projectList);
-      setPlans(data.plans);
-
-      if (projectFilter && !projectList.includes(projectFilter)) {
-        clearProjectFilter();
-      } else if (!projectFilter && projectList.length === 1) {
-        selectProject(projectList[0]);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to load plans");
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  function clearProjectFilter() {
-    setProjectFilter(ALL_PROJECTS);
-    clearProject();
-  }
-
-  function selectProject(name: string) {
-    setProjectFilter(name);
-    if (name) setProject(name);
-    else clearProject();
-    window.dispatchEvent(new Event("planlog-project-change"));
-  }
-
-  const groupedPlans = useMemo(() => {
-    if (projectFilter) return null;
-    const groups = new Map<string, PlanSummary[]>();
-    for (const plan of plans) {
-      const key = plan.project?.trim() || "Unassigned";
-      const list = groups.get(key) || [];
-      list.push(plan);
-      groups.set(key, list);
-    }
-    return [...groups.entries()].sort(([a], [b]) => a.localeCompare(b));
-  }, [plans, projectFilter]);
-
-  function formatDate(iso: string) {
-    return new Date(iso).toLocaleDateString(undefined, {
-      month: "short",
-      day: "numeric",
-      year: "numeric",
-    });
-  }
-
-  async function deletePlan(plan: PlanSummary) {
-    if (!window.confirm(`Delete "${plan.title}"? This cannot be undone.`)) {
-      return;
-    }
-    setDeletingId(plan.id);
-    setError("");
-    try {
-      await api.deletePlan(plan.id);
-      setPlans((current) => current.filter((p) => p.id !== plan.id));
-      setProjects((current) => {
-        const stillUsed = plans.some(
-          (p) => p.id !== plan.id && p.project === plan.project
-        );
-        if (plan.project && !stillUsed) {
-          return current.filter((name) => name !== plan.project);
-        }
-        return current;
-      });
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "Failed to delete plan");
-    } finally {
-      setDeletingId(null);
-    }
-  }
-
-  const newPlanHref = projectFilter
-    ? `/plans/new?project=${encodeURIComponent(projectFilter)}`
-    : "/plans/new";
-
+export default function LandingPage() {
   return (
-    <AppShell>
-      <div className="mb-8 flex flex-wrap items-end justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight">
-            {projectFilter ? projectFilter : "Plans"}
+    <div className="grain min-h-screen">
+      <LandingRedirect />
+      <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_88%,white)] backdrop-blur">
+        <div className="mx-auto flex max-w-5xl items-center justify-between gap-4 px-4 py-3">
+          <a href="#top" className="text-lg font-semibold tracking-tight">
+            Planlog
+          </a>
+          <nav className="hidden items-center gap-5 text-sm text-[var(--muted)] sm:flex">
+            <a href="#how" className="hover:text-[var(--ink)]">
+              How it works
+            </a>
+            <a href="#install" className="hover:text-[var(--ink)]">
+              Install
+            </a>
+            <a href="#use" className="hover:text-[var(--ink)]">
+              Use
+            </a>
+          </nav>
+          <div className="flex items-center gap-2">
+            <Link href="/login?next=/plans">
+              <Button variant="ghost">Sign in</Button>
+            </Link>
+            <Link href="/login?mode=signup&next=/plans">
+              <Button>Get started</Button>
+            </Link>
+          </div>
+        </div>
+      </header>
+
+      <main id="top" className="mx-auto max-w-5xl px-4">
+        <section className="py-16 sm:py-24">
+          <p className="text-sm uppercase tracking-[0.2em] text-[var(--accent)]">Planlog</p>
+          <h1 className="mt-3 max-w-3xl text-4xl font-semibold tracking-tight sm:text-5xl">
+            Plan → Approve → Done for humans and coding agents.
           </h1>
-          <p className="mt-2 max-w-xl text-[var(--muted)]">
-            {projectFilter
-              ? "Plans for this project — shared context for everyone working on it."
-              : "Browse by project. Pick one to focus; team is optional metadata."}
+          <p className="mt-4 max-w-2xl text-lg text-[var(--muted)]">
+            Markdown plans are the source of truth. Agents read them before coding and write Done
+            when they ship — not chat history.
+          </p>
+          <div className="mt-8 flex flex-wrap items-center gap-3">
+            <Link href="/login?mode=signup&next=/plans">
+              <Button>Create account</Button>
+            </Link>
+            <a href="#install">
+              <Button variant="outline">Copy install command</Button>
+            </a>
+          </div>
+        </section>
+
+        <section id="how" className="border-t border-[var(--line)] py-16">
+          <h2 className="text-2xl font-semibold tracking-tight">How it works</h2>
+          <p className="mt-2 max-w-2xl text-[var(--muted)]">
+            One loop for the team and the agent. The plan stays in Planlog.
+          </p>
+          <ol className="mt-8 grid gap-4 sm:grid-cols-3">
+            {[
+              ["Plan", "Write intent, scope, and acceptance criteria in markdown. Project is required."],
+              ["Approve", "Reviewers suggest changes or approve. Agents update only while the plan is a draft."],
+              ["Done", "When shipped, post_done with summary and links. That record is permanent."],
+            ].map(([title, body]) => (
+              <li key={title} className="surface rounded-2xl p-5">
+                <p className="text-sm uppercase tracking-[0.16em] text-[var(--accent)]">{title}</p>
+                <p className="mt-2 text-sm text-[var(--muted)]">{body}</p>
+              </li>
+            ))}
+          </ol>
+        </section>
+
+        <section id="install" className="border-t border-[var(--line)] py-16">
+          <h2 className="text-2xl font-semibold tracking-tight">Install in any repo</h2>
+          <p className="mt-2 max-w-2xl text-[var(--muted)]">
+            One command. No Planlog clone. Works with Cursor, Claude Code, Copilot, Gemini — any
+            agent that reads a markdown instruction file.
+          </p>
+          <InstallCommand className="mt-6 max-w-2xl" />
+          <ul className="mt-6 max-w-2xl space-y-2 text-sm text-[var(--muted)]">
+            <li>Grafts Planlog instructions into <code>AGENTS.md</code> / <code>CLAUDE.md</code></li>
+            <li>Wires MCP to <code>https://planlog.depak.dev/mcp</code> (OAuth, same login)</li>
+            <li>Installs a Cursor skill so agents <code>get_plan</code> before work and <code>post_done</code> when shipped</li>
+          </ul>
+          <p className="mt-4 text-sm text-[var(--muted)]">
+            Paste this in your repo, reload MCP, then Allow access.
+          </p>
+        </section>
+
+        <section id="use" className="border-t border-[var(--line)] py-16">
+          <h2 className="text-2xl font-semibold tracking-tight">Use</h2>
+          <ol className="mt-6 max-w-2xl list-decimal space-y-3 pl-5 text-[var(--muted)]">
+            <li>Sign up → create an organization → write a markdown plan</li>
+            <li>Run install in the repo; paste the <code>plan_id</code> in the agent</li>
+            <li>
+              Agent: <code>get_plan</code> → code → <code>post_done</code> (summary + links)
+            </li>
+            <li>Teammates: approve, suggest, or Notify on Done</li>
+          </ol>
+
+          <div className="mt-8 max-w-2xl overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-[var(--line)] text-[var(--muted)]">
+                  <th className="py-2 pr-4 font-medium">Do</th>
+                  <th className="py-2 font-medium">Don&apos;t</th>
+                </tr>
+              </thead>
+              <tbody className="text-[var(--ink)]">
+                <tr className="border-b border-[var(--line)]">
+                  <td className="py-3 pr-4">Read the plan before editing code</td>
+                  <td className="py-3">Skip <code>get_plan</code> when a plan_id is known</td>
+                </tr>
+                <tr className="border-b border-[var(--line)]">
+                  <td className="py-3 pr-4">
+                    <code>post_done</code> with summary + links when finished
+                  </td>
+                  <td className="py-3">Use <code>add_suggestion</code> to record shipped work</td>
+                </tr>
+                <tr>
+                  <td className="py-3 pr-4">Notify teammates for the next implementer</td>
+                  <td className="py-3">Leave shipped work only in chat</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="border-t border-[var(--line)] py-16">
+          <h2 className="text-2xl font-semibold tracking-tight">Why it sticks</h2>
+          <ul className="mt-6 grid gap-4 sm:grid-cols-2">
+            {[
+              ["Done is history", "Permanent record — not a Slack thread that disappears."],
+              ["Share links", "Team or Anyone links for people inside and outside the org."],
+              ["Sent to me", "Handoffs land in a filter the next person actually opens."],
+              ["Any coding agent", "Cursor, Claude Code, Copilot, Gemini — same markdown contract."],
+            ].map(([title, body]) => (
+              <li key={title} className="surface rounded-2xl p-5">
+                <p className="font-medium">{title}</p>
+                <p className="mt-1 text-sm text-[var(--muted)]">{body}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </main>
+
+      <footer className="border-t border-[var(--line)] py-10">
+        <div className="mx-auto max-w-5xl space-y-3 px-4 text-sm text-[var(--muted)]">
+          <p>
+            MCP:{" "}
+            <code className="text-[var(--ink)]">https://planlog.depak.dev/mcp</code>
+          </p>
+          <p>
+            Install: <code className="text-[var(--ink)]">{INSTALL_COMMAND}</code>
+          </p>
+          <p>
+            <a
+              href="https://github.com/depak7/ohship"
+              className="text-[var(--accent)] hover:underline"
+            >
+              GitHub
+            </a>
+            {" · "}
+            <Link href="/login?next=/plans" className="text-[var(--accent)] hover:underline">
+              Sign in
+            </Link>
           </p>
         </div>
-        <Link href={newPlanHref}>
-          <Button>New plan</Button>
-        </Link>
-      </div>
-
-      <Card className="mb-6">
-        <div className="flex flex-wrap gap-4">
-          <div className="min-w-[180px]">
-            <label className="mb-1 block text-xs font-medium text-[var(--muted)]">Project</label>
-            <Select
-              value={projectFilter}
-              onChange={(e) => selectProject(e.target.value)}
-            >
-              <option value={ALL_PROJECTS}>All projects</option>
-              {projects.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div>
-            <label className="mb-1 block text-xs font-medium text-[var(--muted)]">Status</label>
-            <Select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value as PlanStatus | "")}
-            >
-              <option value="">All</option>
-              {(Object.keys(STATUS_LABELS) as PlanStatus[]).map((s) => (
-                <option key={s} value={s}>
-                  {STATUS_LABELS[s]}
-                </option>
-              ))}
-            </Select>
-          </div>
-          <div className="flex items-end">
-            <label className="flex items-center gap-2 pb-2 text-sm text-[var(--muted)]">
-              <input
-                type="checkbox"
-                checked={requestedOfMe}
-                onChange={(e) => setRequestedOfMe(e.target.checked)}
-              />
-              Requested of me
-            </label>
-          </div>
-          <div className="flex items-end">
-            <label className="flex items-center gap-2 pb-2 text-sm text-[var(--muted)]">
-              <input
-                type="checkbox"
-                checked={sentToMe}
-                onChange={(e) => setSentToMe(e.target.checked)}
-              />
-              Sent to me
-            </label>
-          </div>
-        </div>
-      </Card>
-
-      {loading && <p className="text-[var(--muted)]">Loading plans…</p>}
-      {error && <p className="text-[var(--danger)]">{error}</p>}
-
-      {!loading && !error && plans.length === 0 && (
-        <Card>
-          <p className="text-[var(--muted)]">
-            {projectFilter
-              ? `No plans in ${projectFilter} yet.`
-              : "No plans yet. Create one under a project your team shares."}
-          </p>
-        </Card>
-      )}
-
-      {!loading && !error && projectFilter && (
-        <PlanList plans={plans} deletingId={deletingId} onDelete={deletePlan} formatDate={formatDate} />
-      )}
-
-      {!loading && !error && !projectFilter && groupedPlans && (
-        <div className="space-y-8">
-          {groupedPlans.map(([projectName, projectPlans]) => (
-            <section key={projectName}>
-              <div className="mb-3 flex items-center justify-between gap-4">
-                <h2 className="text-lg font-semibold tracking-tight">{projectName}</h2>
-                <button
-                  type="button"
-                  className="text-sm text-[var(--accent)] hover:underline"
-                  onClick={() => selectProject(projectName === "Unassigned" ? "" : projectName)}
-                >
-                  Focus this project
-                </button>
-              </div>
-              <PlanList
-                plans={projectPlans}
-                deletingId={deletingId}
-                onDelete={deletePlan}
-                formatDate={formatDate}
-              />
-            </section>
-          ))}
-        </div>
-      )}
-    </AppShell>
-  );
-}
-
-function PlanList({
-  plans,
-  deletingId,
-  onDelete,
-  formatDate,
-}: {
-  plans: PlanSummary[];
-  deletingId: string | null;
-  onDelete: (plan: PlanSummary) => void;
-  formatDate: (iso: string) => string;
-}) {
-  return (
-    <div className="space-y-3">
-      {plans.map((plan) => (
-        <article
-          key={plan.id}
-          className="surface mb-3 flex items-start gap-2 rounded-2xl p-5 transition hover:bg-white"
-        >
-          <Link href={`/plans/${plan.id}`} className="min-w-0 flex-1 hover:-translate-y-0.5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <h2 className="text-lg font-semibold tracking-tight">{plan.title}</h2>
-                <p className="mt-1 text-sm text-[var(--muted)]">
-                  {plan.owner.name}
-                  {plan.project && (
-                    <span className="font-medium text-[var(--ink)]"> · {plan.project}</span>
-                  )}
-                  {plan.team && ` · ${plan.team}`}
-                  {plan.reviewers && plan.reviewers.length > 0 &&
-                    ` · review: ${plan.reviewers.map((r) => r.name).join(", ")}`}
-                </p>
-              </div>
-              <div className="text-right">
-                <PlanStatusBadge status={plan.status} />
-                <p className="mt-2 text-xs text-[var(--muted)]">{formatDate(plan.updated_at)}</p>
-              </div>
-            </div>
-          </Link>
-          <button
-            type="button"
-            aria-label={`Delete ${plan.title}`}
-            disabled={deletingId === plan.id}
-            onClick={() => onDelete(plan)}
-            className="mt-0.5 shrink-0 rounded-lg p-2 text-[var(--muted)] hover:bg-[var(--danger)]/10 hover:text-[var(--danger)] disabled:opacity-50"
-          >
-            <TrashIcon />
-          </button>
-        </article>
-      ))}
+      </footer>
     </div>
-  );
-}
-
-function TrashIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      width="16"
-      height="16"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden
-    >
-      <path d="M3 6h18" />
-      <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6" />
-      <path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-    </svg>
   );
 }

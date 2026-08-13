@@ -14,7 +14,7 @@ function CallbackInner() {
     if (token) {
       setToken(token);
       if (apiKey) setApiKey(apiKey);
-      router.replace("/");
+      router.replace("/plans");
     } else {
       router.replace("/login");
     }

@@ -14,7 +14,8 @@ const sourceSerif = Source_Serif_4({
 
 export const metadata: Metadata = {
   title: "Planlog",
-  description: "Plan → Approve → Done — markdown plans for teams",
+  description:
+    "Plan → Approve → Done — markdown plans humans and coding agents share. Agents read the plan before coding and post Done when they ship.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

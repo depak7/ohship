@@ -259,7 +259,7 @@ export default function PlanDetailPage() {
 
   return (
     <AppShell>
-      <Link href="/" className="mb-4 inline-block text-sm text-[var(--muted)] hover:text-[var(--ink)]">
+      <Link href="/plans" className="mb-4 inline-block text-sm text-[var(--muted)] hover:text-[var(--ink)]">
         ← Back to plans
       </Link>
 
