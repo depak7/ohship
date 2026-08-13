@@ -32,6 +32,8 @@ dev = [
 
 [project.scripts]
 ohship-mcp = "ohship.mcp.server:main"
+ohship-seed = "ohship.scripts.seed:main"
+ohship-agent = "ohship.scripts.agent_install:main"
 
 [build-system]
 requires = ["uv_build>=0.11.3,<0.12.0"]

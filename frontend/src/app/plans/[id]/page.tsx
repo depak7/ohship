@@ -7,6 +7,7 @@ import { AppShell } from "@/components/app-shell";
 import { Button, Card, Label, Textarea } from "@/components/ui";
 import { DonePanel, PlanStatusBadge } from "@/components/plan-panels";
 import { Markdown } from "@/components/markdown";
+import { NotifySidebar } from "@/components/notify-sidebar";
 import { ReviewersSidebar } from "@/components/reviewers-sidebar";
 import { ensureAnyoneLink, ShareSidebar } from "@/components/share-sidebar";
 import { api, DoneLink, Member, PlanDetail } from "@/lib/api";
@@ -30,8 +31,9 @@ export default function PlanDetailPage() {
   const [doneSummary, setDoneSummary] = useState("");
   const [doneNotes, setDoneNotes] = useState("");
   const [doneLinks, setDoneLinks] = useState("");
-  const [handoffIds, setHandoffIds] = useState<string[]>([]);
+  const [handoffNotes, setHandoffNotes] = useState("");
   const [shareLinkCopied, setShareLinkCopied] = useState(false);
+  const [notifySummary, setNotifySummary] = useState("");
 
   useEffect(() => {
     if (!getToken()) {
@@ -112,6 +114,102 @@ export default function PlanDetailPage() {
     setTimeout(() => setCopied(false), 2000);
   }
 
+  const canShip = plan.status !== "done";
+
+  const doneForm = showDoneForm && canShip && (
+    <div className="mt-4 space-y-4 border-t border-[var(--line)] pt-4">
+      <p className="text-sm text-[var(--muted)]">
+        Marks the plan as Done (self-approves and claims if needed). Review steps are optional.
+      </p>
+      <div>
+        <Label htmlFor="summary">Summary (markdown)</Label>
+        <Textarea
+          id="summary"
+          rows={5}
+          value={doneSummary}
+          onChange={(e) => setDoneSummary(e.target.value)}
+          required
+        />
+      </div>
+      <div>
+        <Label htmlFor="links">Links (type|url|label per line)</Label>
+        <Textarea
+          id="links"
+          rows={3}
+          value={doneLinks}
+          onChange={(e) => setDoneLinks(e.target.value)}
+          placeholder={"pr|https://github.com/org/repo/pull/1|PR #1"}
+        />
+      </div>
+      <div>
+        <Label htmlFor="residual">Residual notes</Label>
+        <Textarea
+          id="residual"
+          rows={2}
+          value={doneNotes}
+          onChange={(e) => setDoneNotes(e.target.value)}
+        />
+      </div>
+      <div>
+        <Label htmlFor="handoff-notes">Handoff / spec update (markdown)</Label>
+        <Textarea
+          id="handoff-notes"
+          rows={4}
+          value={handoffNotes}
+          onChange={(e) => setHandoffNotes(e.target.value)}
+          placeholder={
+            "## For frontend\n\n- API endpoints changed\n- Update spec at …\n- Start from /share/… link"
+          }
+        />
+        <p className="mt-1 text-xs text-[var(--muted)]">
+          What the next person needs to implement — shown prominently on the Done report.
+        </p>
+      </div>
+      <Button
+        disabled={actionLoading || !doneSummary.trim()}
+        onClick={async () => {
+          setActionLoading(true);
+          setError("");
+          try {
+            const notifyBefore = plan.notifyees || [];
+            const updated = await api.postDone(planId, {
+              summary: doneSummary,
+              links: parseLinks(doneLinks),
+              residual_notes: doneNotes || undefined,
+              handoff_notes: handoffNotes.trim() || undefined,
+            });
+            setPlan(updated);
+            setShowDoneForm(false);
+            const link = await ensureAnyoneLink(planId);
+            const refreshed = await api.getPlan(planId);
+            setPlan(refreshed);
+            await navigator.clipboard.writeText(link);
+            const names = (refreshed.done?.handoff_to || notifyBefore).map((u) => u.name);
+            setNotifySummary(
+              names.length
+                ? `Notified in OhShip: ${names.join(", ")}. Share link copied.`
+                : "Share link copied — paste in Slack for people outside the org."
+            );
+            setShareLinkCopied(true);
+            setTimeout(() => {
+              setShareLinkCopied(false);
+              setNotifySummary("");
+            }, 5000);
+          } catch (e) {
+            setError(e instanceof Error ? e.message : "Action failed");
+          } finally {
+            setActionLoading(false);
+          }
+        }}
+      >
+        Submit Done
+      </Button>
+      {shareLinkCopied && notifySummary && (
+        <p className="text-sm text-[var(--done)]">{notifySummary}</p>
+      )}
+    </div>
+  );
+
   const sidebars = (
     <div className="space-y-4">
       <ShareSidebar
@@ -138,6 +236,23 @@ export default function PlanDetailPage() {
         onCopyAgentPrompt={copyAgentPrompt}
         copied={copied}
       />
+      <NotifySidebar
+        plan={plan}
+        members={members}
+        meId={meId}
+        disabled={actionLoading}
+        onAdd={async (memberId) => {
+          setActionLoading(true);
+          setError("");
+          try {
+            setPlan(await api.requestNotifyees(planId, [memberId]));
+          } catch (e) {
+            setError(e instanceof Error ? e.message : "Could not add notifyee");
+          } finally {
+            setActionLoading(false);
+          }
+        }}
+      />
     </div>
   );
 
@@ -159,8 +274,10 @@ export default function PlanDetailPage() {
               <h1 className="text-3xl font-semibold tracking-tight">{plan.title}</h1>
               <p className="mt-2 text-sm text-[var(--muted)]">
                 {plan.owner.name}
+                {plan.project && (
+                  <span className="font-medium text-[var(--ink)]"> · {plan.project}</span>
+                )}
                 {plan.team && ` · ${plan.team}`}
-                {plan.project && ` · ${plan.project}`}
               </p>
             </div>
             <PlanStatusBadge status={plan.status} />
@@ -214,8 +331,14 @@ export default function PlanDetailPage() {
               <Card>
                 <h2 className="mb-4 font-semibold">Actions</h2>
                 <div className="flex flex-wrap gap-2">
+                  {canShip && (
+                    <Button onClick={() => setShowDoneForm(!showDoneForm)}>
+                      {showDoneForm ? "Hide Done form" : "Mark as Done"}
+                    </Button>
+                  )}
                   {(plan.status === "draft" || plan.status === "changes_requested") && (
                     <Button
+                      variant="outline"
                       disabled={actionLoading}
                       onClick={() => runAction(() => api.submitPlan(planId))}
                     >
@@ -225,10 +348,11 @@ export default function PlanDetailPage() {
                   {plan.status === "in_review" && (
                     <>
                       <Button
+                        variant="outline"
                         disabled={actionLoading}
                         onClick={() => runAction(() => api.approvePlan(planId))}
                       >
-                        Approve
+                        Approve only
                       </Button>
                       <Button
                         variant="outline"
@@ -243,15 +367,11 @@ export default function PlanDetailPage() {
                   )}
                   {plan.status === "approved" && (
                     <Button
+                      variant="outline"
                       disabled={actionLoading}
                       onClick={() => runAction(() => api.claimPlan(planId))}
                     >
                       Claim
-                    </Button>
-                  )}
-                  {plan.status === "in_progress" && (
-                    <Button variant="outline" onClick={() => setShowDoneForm(!showDoneForm)}>
-                      Post Done
                     </Button>
                   )}
                 </div>
@@ -269,100 +389,7 @@ export default function PlanDetailPage() {
                   </div>
                 )}
 
-                {showDoneForm && plan.status === "in_progress" && (
-                  <div className="mt-4 space-y-4 border-t border-[var(--line)] pt-4">
-                    <div>
-                      <Label htmlFor="summary">Summary (markdown)</Label>
-                      <Textarea
-                        id="summary"
-                        rows={5}
-                        value={doneSummary}
-                        onChange={(e) => setDoneSummary(e.target.value)}
-                        required
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="links">Links (type|url|label per line)</Label>
-                      <Textarea
-                        id="links"
-                        rows={3}
-                        value={doneLinks}
-                        onChange={(e) => setDoneLinks(e.target.value)}
-                        placeholder={"pr|https://github.com/org/repo/pull/1|PR #1"}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="residual">Residual notes</Label>
-                      <Textarea
-                        id="residual"
-                        rows={2}
-                        value={doneNotes}
-                        onChange={(e) => setDoneNotes(e.target.value)}
-                      />
-                    </div>
-                    {members.length > 0 && (
-                      <div>
-                        <Label>Send report to</Label>
-                        <div className="mt-2 space-y-2">
-                          {members
-                            .filter((m) => m.id !== meId)
-                            .map((member) => (
-                              <label
-                                key={member.id}
-                                className="flex items-center gap-2 text-sm text-[var(--muted)]"
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={handoffIds.includes(member.id)}
-                                  onChange={(e) => {
-                                    setHandoffIds((ids) =>
-                                      e.target.checked
-                                        ? [...ids, member.id]
-                                        : ids.filter((id) => id !== member.id)
-                                    );
-                                  }}
-                                />
-                                {member.name}
-                              </label>
-                            ))}
-                        </div>
-                      </div>
-                    )}
-                    <Button
-                      disabled={actionLoading || !doneSummary.trim()}
-                      onClick={async () => {
-                        setActionLoading(true);
-                        setError("");
-                        try {
-                          const updated = await api.postDone(planId, {
-                            summary: doneSummary,
-                            links: parseLinks(doneLinks),
-                            residual_notes: doneNotes || undefined,
-                            handoff_to: handoffIds,
-                          });
-                          setPlan(updated);
-                          setShowDoneForm(false);
-                          const link = await ensureAnyoneLink(planId);
-                          setPlan(await api.getPlan(planId));
-                          await navigator.clipboard.writeText(link);
-                          setShareLinkCopied(true);
-                          setTimeout(() => setShareLinkCopied(false), 3000);
-                        } catch (e) {
-                          setError(e instanceof Error ? e.message : "Action failed");
-                        } finally {
-                          setActionLoading(false);
-                        }
-                      }}
-                    >
-                      Submit Done
-                    </Button>
-                    {shareLinkCopied && (
-                      <p className="text-sm text-[var(--done)]">
-                        Done posted. Anyone link copied to clipboard.
-                      </p>
-                    )}
-                  </div>
-                )}
+                {doneForm}
               </Card>
             </div>
             {sidebars}

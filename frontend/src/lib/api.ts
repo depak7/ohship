@@ -71,6 +71,7 @@ export interface DoneRecord {
   summary: string;
   links: DoneLink[];
   residual_notes: string | null;
+  handoff_notes?: string | null;
   posted_by: UserBrief;
   posted_at: string;
   handoff_to?: UserBrief[];
@@ -86,6 +87,7 @@ export interface PlanDetail extends PlanSummary {
   done: DoneRecord | null;
   markdown: string;
   agent_prompt?: string;
+  notifyees?: UserBrief[];
 }
 
 export interface AuthResponse {
@@ -176,14 +178,21 @@ export const api = {
     query.set("organization_id", orgId);
     return request<{ plans: PlanSummary[]; total: number }>(`/api/v1/plans?${query}`);
   },
+  listProjects: () => {
+    const orgId = getOrgId();
+    if (!orgId) throw new ApiError("No organization selected", 400);
+    return request<string[]>(`/api/v1/plans/projects?organization_id=${orgId}`);
+  },
   getPlan: (id: string) => request<PlanDetail>(`/api/v1/plans/${id}`),
+  deletePlan: (id: string) =>
+    request<void>(`/api/v1/plans/${id}`, { method: "DELETE" }),
   createPlan: (body: {
     title: string;
     intent: string;
     acceptance_criteria: string;
     scope?: string;
     team?: string;
-    project?: string;
+    project: string;
     organization_id: string;
   }) =>
     request<PlanDetail>("/api/v1/plans", {
@@ -205,6 +214,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ reviewer_ids: reviewerIds }),
     }),
+  requestNotifyees: (id: string, notifyIds: string[]) =>
+    request<PlanDetail>(`/api/v1/plans/${id}/notifyees`, {
+      method: "POST",
+      body: JSON.stringify({ notify_ids: notifyIds }),
+    }),
   approvePlan: (id: string) =>
     request<PlanDetail>(`/api/v1/plans/${id}/approve`, { method: "POST" }),
   requestChanges: (id: string, content?: string) =>
@@ -220,6 +234,7 @@ export const api = {
       summary: string;
       links: DoneLink[];
       residual_notes?: string;
+      handoff_notes?: string;
       handoff_to?: string[];
     }
   ) =>

@@ -4,7 +4,15 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { api, Organization, UserBrief } from "@/lib/api";
-import { clearSession, getOrgId, getToken, setOrgId } from "@/lib/auth";
+import {
+  clearProject,
+  clearSession,
+  getOrgId,
+  getProject,
+  getToken,
+  setOrgId,
+  setProject,
+} from "@/lib/auth";
 import { Button, Select } from "@/components/ui";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -13,6 +21,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<UserBrief | null>(null);
   const [orgs, setOrgs] = useState<Organization[]>([]);
   const [orgId, setLocalOrgId] = useState<string | null>(null);
+  const [projects, setProjects] = useState<string[]>([]);
+  const [activeProject, setActiveProject] = useState<string>("");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -31,9 +41,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         if (selected) {
           setOrgId(selected);
           setLocalOrgId(selected);
+          const names = await api.listProjects();
+          setProjects(names);
         } else if (!pathname.startsWith("/orgs")) {
           router.replace("/orgs/new");
         }
+        setActiveProject(getProject() || "");
       } catch {
         clearSession();
         router.replace("/login");
@@ -42,6 +55,22 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       }
     })();
   }, [router, pathname]);
+
+  useEffect(() => {
+    function onProjectChange() {
+      setActiveProject(getProject() || "");
+    }
+    window.addEventListener("ohship-project-change", onProjectChange);
+    return () => window.removeEventListener("ohship-project-change", onProjectChange);
+  }, []);
+
+  function handleProjectChange(value: string) {
+    if (value) setProject(value);
+    else clearProject();
+    setActiveProject(value);
+    window.dispatchEvent(new Event("ohship-project-change"));
+    if (pathname !== "/") router.push("/");
+  }
 
   if (loading) {
     return (
@@ -77,9 +106,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             {orgs.length > 0 && (
               <Select
                 value={orgId || ""}
-                onChange={(e) => {
+                onChange={async (e) => {
                   setOrgId(e.target.value);
                   setLocalOrgId(e.target.value);
+                  clearProject();
+                  setActiveProject("");
+                  const names = await api.listProjects();
+                  setProjects(names);
                   router.refresh();
                   if (pathname !== "/") router.push("/");
                   else window.location.reload();
@@ -107,10 +140,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           </div>
         </div>
         {currentOrg && (
-          <div className="mx-auto max-w-6xl px-4 pb-3 text-xs text-[var(--muted)]">
-            Viewing <span className="font-medium text-[var(--ink)]">{currentOrg.name}</span>
-            {" · "}
-            all members can see every plan
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-3 px-4 pb-3 text-xs text-[var(--muted)]">
+            <span>
+              Org: <span className="font-medium text-[var(--ink)]">{currentOrg.name}</span>
+            </span>
+            {projects.length > 0 && (
+              <>
+                <span aria-hidden>·</span>
+                <label className="flex items-center gap-2">
+                  Project
+                  <Select
+                    className="text-xs"
+                    value={activeProject}
+                    onChange={(e) => handleProjectChange(e.target.value)}
+                  >
+                    <option value="">All projects</option>
+                    {projects.map((name) => (
+                      <option key={name} value={name}>
+                        {name}
+                      </option>
+                    ))}
+                  </Select>
+                </label>
+              </>
+            )}
+            <span aria-hidden>·</span>
+            <span>Plans grouped by project; team is optional metadata.</span>
           </div>
         )}
       </header>

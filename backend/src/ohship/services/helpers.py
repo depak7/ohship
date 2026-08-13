@@ -4,9 +4,10 @@ from sqlmodel import Session, select
 
 from ohship.auth import generate_api_key, hash_api_key, hash_password
 from ohship.config import settings
-from ohship.models import DoneHandoff, DoneRecord, Plan, PlanReviewRequest, Suggestion, User
+from ohship.models import DoneHandoff, DoneRecord, Plan, PlanNotifyRequest, PlanReviewRequest, PlanStatus, Suggestion, User
 from ohship.schemas import (
     DoneResponse,
+    NotifyResponse,
     PlanDetail,
     PlanSummary,
     PublicDoneResponse,
@@ -39,7 +40,7 @@ def plan_web_url(plan: Plan) -> str:
 
 def agent_review_prompt(plan: Plan) -> str:
     return (
-        f"Review this OhShip plan in your coding agent (Cursor with the OhShip MCP server).\n\n"
+        f"Review this OhShip plan in your coding agent (OhShip MCP server).\n\n"
         f"Title: {plan.title}\n"
         f"Plan ID: {plan.id}\n"
         f"Web: {plan_web_url(plan)}\n\n"
@@ -48,6 +49,35 @@ def agent_review_prompt(plan: Plan) -> str:
         f"2. Read intent, scope, and acceptance criteria\n"
         f"3. approve_plan(plan_id=\"{plan.id}\") or request_changes(plan_id=\"{plan.id}\", content=\"...\")\n"
     )
+
+
+def agent_ship_prompt(plan: Plan) -> str:
+    return (
+        f"Implement and ship this OhShip plan (OhShip MCP server).\n\n"
+        f"Title: {plan.title}\n"
+        f"Plan ID: {plan.id}\n"
+        f"Status: {plan.status.value}\n"
+        f"Web: {plan_web_url(plan)}\n\n"
+        f"Workflow:\n"
+        f"1. get_plan(plan_id=\"{plan.id}\") — read intent and acceptance criteria first\n"
+        f"2. update_plan(...) only if still draft or changes_requested\n"
+        f"3. When finished: post_done(plan_id=\"{plan.id}\", summary=\"...\", links_json=\"[]\", handoff_notes=\"...\")\n"
+        f"4. request_notifyees(plan_id=\"{plan.id}\", notify_ids=\"uuid,...\") for teammates\n\n"
+        f"Do not use add_suggestion to record shipped work — use post_done.\n"
+    )
+
+
+def agent_prompt_for_plan(plan: Plan) -> str:
+    if plan.status == PlanStatus.in_review:
+        return agent_review_prompt(plan)
+    if plan.status == PlanStatus.done:
+        return (
+            f"This OhShip plan is already Done.\n\n"
+            f"Plan ID: {plan.id}\n"
+            f"Web: {plan_web_url(plan)}\n\n"
+            f"Use get_plan(plan_id=\"{plan.id}\") to read the Done report."
+        )
+    return agent_ship_prompt(plan)
 
 
 def list_reviewers(session: Session, plan: Plan) -> list[ReviewerResponse]:
@@ -74,6 +104,32 @@ def list_reviewers(session: Session, plan: Plan) -> list[ReviewerResponse]:
             )
         )
     return reviewers
+
+
+def list_notifyees(session: Session, plan: Plan) -> list[NotifyResponse]:
+    rows = session.exec(
+        select(PlanNotifyRequest)
+        .where(PlanNotifyRequest.plan_id == plan.id)
+        .order_by(PlanNotifyRequest.created_at)  # type: ignore[attr-defined]
+    ).all()
+    notifyees: list[NotifyResponse] = []
+    for row in rows:
+        user = get_user(session, row.notify_user_id)
+        requested_by = get_user(session, row.requested_by_id)
+        if not user:
+            continue
+        brief = user_brief(user)
+        notifyees.append(
+            NotifyResponse(
+                id=brief.id,
+                name=brief.name,
+                email=brief.email,
+                avatar_url=brief.avatar_url,
+                requested_by=user_brief(requested_by),
+                requested_at=row.created_at,
+            )
+        )
+    return notifyees
 
 
 def list_done_handoffs(session: Session, done_record_id) -> list[UserBrief]:
@@ -143,6 +199,7 @@ def plan_to_detail(session: Session, plan: Plan) -> PlanDetail:
     claimed = get_user(session, plan.claimed_by_id) if plan.claimed_by_id else None
     approved_by = get_user(session, plan.approved_by_id) if plan.approved_by_id else None
     reviewers = list_reviewers(session, plan)
+    notifyees = list_notifyees(session, plan)
 
     suggestions = session.exec(
         select(Suggestion).where(Suggestion.plan_id == plan.id).order_by(Suggestion.created_at)  # type: ignore[attr-defined]
@@ -172,6 +229,7 @@ def plan_to_detail(session: Session, plan: Plan) -> PlanDetail:
             summary=done_record.summary,
             links=done_record.links,
             residual_notes=done_record.residual_notes,
+            handoff_notes=done_record.handoff_notes,
             posted_by=user_brief(posted_by),  # type: ignore[arg-type]
             posted_at=done_record.posted_at,
             handoff_to=list_done_handoffs(session, done_record.id),
@@ -197,7 +255,8 @@ def plan_to_detail(session: Session, plan: Plan) -> PlanDetail:
         done=done_response,
         markdown=plan_to_markdown(plan, reviewers),
         reviewers=[UserBrief(id=r.id, name=r.name, email=r.email, avatar_url=r.avatar_url) for r in reviewers],
-        agent_prompt=agent_review_prompt(plan),
+        notifyees=notifyees,
+        agent_prompt=agent_prompt_for_plan(plan),
         visibility=plan.visibility,
         share_url=plan_share_url(plan),
     )

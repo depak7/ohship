@@ -106,6 +106,7 @@ def test_plan_lifecycle(
             "intent": "Build feature X",
             "acceptance_criteria": "- Feature works",
             "organization_id": str(org.id),
+            "project": "test-project",
         },
         headers=headers,
     )

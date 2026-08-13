@@ -104,6 +104,13 @@ class OhShipAPIClient:
             json={"reviewer_ids": reviewer_ids},
         )
 
+    def request_notifyees(self, plan_id: str, notify_ids: list[str]) -> dict[str, Any]:
+        return self._request(
+            "POST",
+            f"/api/v1/plans/{plan_id}/notifyees",
+            json={"notify_ids": notify_ids},
+        )
+
     def add_suggestion(self, plan_id: str, content: str) -> dict[str, Any]:
         return self._request(
             "POST",

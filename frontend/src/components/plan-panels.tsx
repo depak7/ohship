@@ -1,16 +1,82 @@
-import { Badge } from "@/components/ui";
+"use client";
+
+import { useState } from "react";
+import { Badge, Button } from "@/components/ui";
 import { PlanDetail, STATUS_LABELS } from "@/lib/api";
 import { Markdown } from "@/components/markdown";
+import { ensureAnyoneLink } from "@/components/share-sidebar";
 
 export function DonePanel({ plan }: { plan: PlanDetail }) {
+  const [copied, setCopied] = useState<"link" | "handoff" | null>(null);
+
   if (!plan.done) return null;
+
+  const handoffRecipients = plan.done.handoff_to || [];
+
+  async function copyShareLink() {
+    const link = plan.share_url || (await ensureAnyoneLink(plan.id));
+    await navigator.clipboard.writeText(link);
+    setCopied("link");
+    setTimeout(() => setCopied(null), 2500);
+  }
+
+  async function copyHandoffMessage() {
+    const link = plan.share_url || (await ensureAnyoneLink(plan.id));
+    const lines = [
+      `Done: ${plan.title}`,
+      plan.project ? `Project: ${plan.project}` : "",
+      "",
+      plan.done!.handoff_notes?.trim() || plan.done!.summary.trim(),
+      "",
+      plan.done!.links.length
+        ? "Links:\n" + plan.done!.links.map((l) => `- ${l.label || l.type}: ${l.url}`).join("\n")
+        : "",
+      "",
+      `Read full report: ${link}`,
+    ].filter(Boolean);
+    await navigator.clipboard.writeText(lines.join("\n"));
+    setCopied("handoff");
+    setTimeout(() => setCopied(null), 2500);
+  }
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center gap-3">
-        <h1 className="text-3xl font-semibold tracking-tight">{plan.title}</h1>
-        <Badge variant="done">Shipped</Badge>
+      <div className="flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <div className="flex flex-wrap items-center gap-3">
+            <h1 className="text-3xl font-semibold tracking-tight">{plan.title}</h1>
+            <Badge variant="done">Shipped</Badge>
+          </div>
+          <p className="mt-2 text-sm text-[var(--muted)]">
+            {plan.project && (
+              <span className="font-medium text-[var(--ink)]">{plan.project}</span>
+            )}
+            {plan.project && " · "}
+            Shipped by {plan.done.posted_by.name} ·{" "}
+            {new Date(plan.done.posted_at).toLocaleString()}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" className="text-xs" onClick={copyShareLink}>
+            {copied === "link" ? "Copied link" : "Copy share link"}
+          </Button>
+          <Button variant="outline" className="text-xs" onClick={copyHandoffMessage}>
+            {copied === "handoff" ? "Copied message" : "Copy for Slack"}
+          </Button>
+        </div>
       </div>
+
+      {handoffRecipients.length > 0 && (
+        <section className="rounded-2xl border border-[var(--accent-soft)] bg-[var(--accent-soft)]/40 p-4">
+          <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
+            Notified in OhShip
+          </p>
+          <p className="mt-2 text-sm">
+            {handoffRecipients.map((u) => u.name).join(", ")} — check{" "}
+            <span className="font-medium">Sent to me</span> on the plans list.
+          </p>
+        </section>
+      )}
 
       <section className="surface rounded-2xl p-6 md:p-8">
         <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--done)]">
@@ -19,20 +85,34 @@ export function DonePanel({ plan }: { plan: PlanDetail }) {
         <Markdown content={plan.done.summary} />
       </section>
 
+      {plan.done.handoff_notes && (
+        <section className="surface rounded-2xl border-l-4 border-l-[var(--accent)] p-6 md:p-8">
+          <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
+            For the next person (spec / handoff)
+          </p>
+          <Markdown content={plan.done.handoff_notes} />
+        </section>
+      )}
+
       {plan.done.links.length > 0 && (
-        <div className="flex flex-wrap gap-2">
-          {plan.done.links.map((link, i) => (
-            <a
-              key={i}
-              href={link.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="rounded-full border border-[var(--line)] bg-white/70 px-3 py-1.5 text-sm hover:bg-white"
-            >
-              {link.label || link.type}
-            </a>
-          ))}
-        </div>
+        <section>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-[0.14em] text-[var(--muted)]">
+            Links
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {plan.done.links.map((link, i) => (
+              <a
+                key={i}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="rounded-full border border-[var(--line)] bg-white/70 px-3 py-1.5 text-sm hover:bg-white"
+              >
+                {link.label || link.type}
+              </a>
+            ))}
+          </div>
+        </section>
       )}
 
       {plan.done.residual_notes && (

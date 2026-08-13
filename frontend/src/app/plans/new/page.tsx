@@ -1,21 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
 import { Button, Card, Input, Label, Textarea } from "@/components/ui";
 import { api } from "@/lib/api";
-import { getOrgId } from "@/lib/auth";
+import { getOrgId, getProject } from "@/lib/auth";
 
 export default function NewPlanPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [title, setTitle] = useState("");
   const [intent, setIntent] = useState("");
   const [scope, setScope] = useState("");
   const [acceptanceCriteria, setAcceptanceCriteria] = useState("");
   const [team, setTeam] = useState("");
-  const [project, setProject] = useState("");
+  const [project, setProject] = useState(
+    () => searchParams.get("project") || getProject() || ""
+  );
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -26,6 +29,10 @@ export default function NewPlanPage() {
       setError("Select or create an organization first");
       return;
     }
+    if (!project.trim()) {
+      setError("Project is required");
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -34,8 +41,8 @@ export default function NewPlanPage() {
         intent,
         acceptance_criteria: acceptanceCriteria,
         scope: scope || undefined,
-        team: team || undefined,
-        project: project || undefined,
+        team: team.trim() || undefined,
+        project: project.trim(),
         organization_id,
       });
       router.push(`/plans/${plan.id}`);
@@ -53,10 +60,21 @@ export default function NewPlanPage() {
       </Link>
       <h1 className="mb-2 text-3xl font-semibold tracking-tight">New plan</h1>
       <p className="mb-6 text-[var(--muted)]">
-        Write in markdown. Your teammates and agents will read the same document.
+        Every plan belongs to a project so teammates on that work share the same context.
       </p>
       <Card className="max-w-3xl">
         <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <Label htmlFor="project">Project</Label>
+            <Input
+              id="project"
+              value={project}
+              onChange={(e) => setProject(e.target.value)}
+              placeholder="e.g. ohship, mobile-app"
+              required
+            />
+            <p className="mt-1 text-xs text-[var(--muted)]">Required — used to group plans in the org.</p>
+          </div>
           <div>
             <Label htmlFor="title">Title</Label>
             <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} required />
@@ -93,15 +111,15 @@ export default function NewPlanPage() {
               required
             />
           </div>
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Label htmlFor="team">Team</Label>
-              <Input id="team" value={team} onChange={(e) => setTeam(e.target.value)} />
-            </div>
-            <div>
-              <Label htmlFor="project">Project</Label>
-              <Input id="project" value={project} onChange={(e) => setProject(e.target.value)} />
-            </div>
+          <div>
+            <Label htmlFor="team">Team (optional)</Label>
+            <Input
+              id="team"
+              value={team}
+              onChange={(e) => setTeam(e.target.value)}
+              placeholder="e.g. platform, AX"
+            />
+            <p className="mt-1 text-xs text-[var(--muted)]">Secondary label — project is the main grouping.</p>
           </div>
           {error && <p className="text-sm text-[var(--danger)]">{error}</p>}
           <Button type="submit" disabled={loading}>

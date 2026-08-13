@@ -101,6 +101,31 @@ def test_owner_can_approve(session: Session, plan: Plan, owner: User):
     assert plan.approved_by_id == owner.id
 
 
+def test_post_done_from_in_review_self_approves(session: Session, plan: Plan, owner: User):
+    from ohship.services.done import post_done
+
+    transition_plan(session, plan, "submit_for_review", owner)
+    assert plan.status == PlanStatus.in_review
+
+    post_done(session, plan, owner, "Shipped from review", [])
+    session.refresh(plan)
+
+    assert plan.status == PlanStatus.done
+    assert plan.approved_by_id == owner.id
+    assert plan.claimed_by_id == owner.id
+
+
+def test_post_done_from_draft(session: Session, plan: Plan, owner: User):
+    from ohship.services.done import post_done
+
+    post_done(session, plan, owner, "Shipped from draft", [])
+    session.refresh(plan)
+
+    assert plan.status == PlanStatus.done
+    assert plan.approved_by_id == owner.id
+    assert plan.claimed_by_id == owner.id
+
+
 def test_add_reviewers(session: Session, plan: Plan, owner: User, reviewer: User, org: Organization):
     session.add(
         OrgMembership(

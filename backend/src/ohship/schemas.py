@@ -96,8 +96,8 @@ class PlanCreate(BaseModel):
     intent: str = Field(min_length=1)
     scope: Optional[str] = None
     acceptance_criteria: str = Field(min_length=1)
-    team: Optional[str] = None
-    project: Optional[str] = None
+    team: Optional[str] = Field(default=None, max_length=255)
+    project: str = Field(min_length=1, max_length=255)
     organization_id: UUID
 
 
@@ -122,7 +122,16 @@ class ReviewRequestBody(BaseModel):
     reviewer_ids: list[UUID] = Field(default_factory=list)
 
 
+class NotifyRequestBody(BaseModel):
+    notify_ids: list[UUID] = Field(default_factory=list)
+
+
 class ReviewerResponse(UserBrief):
+    requested_by: Optional[UserBrief] = None
+    requested_at: Optional[datetime] = None
+
+
+class NotifyResponse(UserBrief):
     requested_by: Optional[UserBrief] = None
     requested_at: Optional[datetime] = None
 
@@ -131,6 +140,7 @@ class DoneCreate(BaseModel):
     summary: str = Field(min_length=1)
     links: list[DoneLink] = Field(default_factory=list)
     residual_notes: Optional[str] = None
+    handoff_notes: Optional[str] = None
     handoff_to: list[UUID] = Field(default_factory=list)
 
 
@@ -153,6 +163,7 @@ class DoneResponse(BaseModel):
     summary: str
     links: list[dict[str, Any]]
     residual_notes: Optional[str]
+    handoff_notes: Optional[str] = None
     posted_by: UserBrief
     posted_at: datetime
     handoff_to: list[UserBrief] = Field(default_factory=list)
@@ -184,6 +195,7 @@ class PlanDetail(PlanSummary):
     done: Optional[DoneResponse] = None
     markdown: str = ""
     agent_prompt: str = ""
+    notifyees: list[NotifyResponse] = Field(default_factory=list)
 
 
 class PlanListResponse(BaseModel):

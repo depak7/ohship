@@ -1,6 +1,9 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
+from ohship.constants import PUBLIC_INSTALL_URL
+
+
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
@@ -9,6 +12,7 @@ class Settings(BaseSettings):
     cors_origins: str = "http://localhost:3000"
     api_url: str = "http://localhost:8000"
     frontend_url: str = "http://localhost:3000"
+    install_url: str = PUBLIC_INSTALL_URL
     jwt_secret: str = "ohship-dev-secret-change-me-please-32b"
     jwt_expire_hours: int = 168
     google_client_id: str = ""

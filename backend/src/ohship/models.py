@@ -156,6 +156,7 @@ class Plan(SQLModel, table=True):
     organization: Optional[Organization] = Relationship(back_populates="plans")
     suggestions: list["Suggestion"] = Relationship(back_populates="plan")
     review_requests: list["PlanReviewRequest"] = Relationship(back_populates="plan")
+    notify_requests: list["PlanNotifyRequest"] = Relationship(back_populates="plan")
     done_record: Optional["DoneRecord"] = Relationship(back_populates="plan")
 
 
@@ -175,6 +176,25 @@ class PlanReviewRequest(SQLModel, table=True):
     plan: Optional[Plan] = Relationship(back_populates="review_requests")
     reviewer: Optional[User] = Relationship(
         sa_relationship_kwargs={"foreign_keys": "[PlanReviewRequest.reviewer_id]"}
+    )
+
+
+class PlanNotifyRequest(SQLModel, table=True):
+    __tablename__ = "plan_notify_requests"
+    __table_args__ = (UniqueConstraint("plan_id", "notify_user_id", name="uq_plan_notify_user"),)
+
+    id: UUID = Field(default_factory=uuid4, primary_key=True)
+    plan_id: UUID = Field(foreign_key="plans.id", index=True)
+    notify_user_id: UUID = Field(foreign_key="users.id", index=True)
+    requested_by_id: UUID = Field(foreign_key="users.id")
+    created_at: datetime = Field(
+        default_factory=utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )
+
+    plan: Optional[Plan] = Relationship(back_populates="notify_requests")
+    notify_user: Optional[User] = Relationship(
+        sa_relationship_kwargs={"foreign_keys": "[PlanNotifyRequest.notify_user_id]"}
     )
 
 
@@ -205,6 +225,7 @@ class DoneRecord(SQLModel, table=True):
         sa_column=Column(JSON, nullable=False, server_default="[]"),
     )
     residual_notes: Optional[str] = Field(default=None, sa_column=Column(Text))
+    handoff_notes: Optional[str] = Field(default=None, sa_column=Column(Text))
     posted_by_id: UUID = Field(foreign_key="users.id")
     posted_at: datetime = Field(
         default_factory=utcnow,

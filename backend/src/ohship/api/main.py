@@ -10,7 +10,7 @@ from mcp.server.auth.middleware.bearer_auth import BearerAuthBackend
 from mcp.server.auth.routes import create_auth_routes
 from mcp.server.auth.settings import ClientRegistrationOptions
 
-from ohship.api.routes import auth, oauth, orgs, plans, public
+from ohship.api.routes import auth, install, oauth, orgs, plans, public
 from ohship.config import settings
 from ohship.db import check_db_connection
 from ohship.mcp.server import create_mcp_server
@@ -60,6 +60,7 @@ def health() -> dict:
     }
 
 
+app.include_router(install.router)
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(orgs.router, prefix="/api/v1")
 app.include_router(plans.router, prefix="/api/v1")

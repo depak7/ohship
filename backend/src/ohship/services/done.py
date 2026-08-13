@@ -5,7 +5,12 @@ from sqlmodel import Session, select
 
 from ohship.models import DoneHandoff, DoneRecord, Plan, PlanStatus, User, utcnow
 from ohship.services.orgs import require_membership
-from ohship.services.plans import PlanTransitionError, transition_plan
+from ohship.services.plans import (
+    SHIPPABLE_STATUSES,
+    PlanTransitionError,
+    list_plan_notify_user_ids,
+    transition_plan,
+)
 
 
 def post_done(
@@ -15,9 +20,12 @@ def post_done(
     summary: str,
     links: list[dict[str, Any]],
     residual_notes: str | None = None,
+    handoff_notes: str | None = None,
     handoff_to: list[UUID] | None = None,
 ) -> DoneRecord:
-    if plan.status != PlanStatus.in_progress:
+    if plan.status == PlanStatus.done:
+        raise PlanTransitionError("Plan is already done")
+    if plan.status not in SHIPPABLE_STATUSES:
         raise PlanTransitionError(
             f"Cannot post done from status '{plan.status.value}'"
         )
@@ -28,31 +36,37 @@ def post_done(
     if existing is not None:
         raise PlanTransitionError("Done record already exists for this plan")
 
+    # Ship directly: self-approve and claim when intermediate steps were skipped.
+    if not plan.approved_by_id:
+        plan.approved_at = utcnow()
+        plan.approved_by_id = actor.id
+    if not plan.claimed_by_id:
+        plan.claimed_by_id = actor.id
+
     done = DoneRecord(
         plan_id=plan.id,
         summary=summary,
         links=links,
         residual_notes=residual_notes,
+        handoff_notes=handoff_notes,
         posted_by_id=actor.id,
         posted_at=utcnow(),
     )
     session.add(done)
     session.flush()
 
+    all_notify: set[UUID] = set(list_plan_notify_user_ids(session, plan.id))
     if handoff_to:
-        seen: set[UUID] = set()
-        for user_id in handoff_to:
-            if user_id in seen:
-                continue
-            seen.add(user_id)
-            require_membership(session, plan.organization_id, user_id)
-            session.add(
-                DoneHandoff(
-                    done_record_id=done.id,
-                    user_id=user_id,
-                    created_at=utcnow(),
-                )
+        all_notify.update(handoff_to)
+    for user_id in all_notify:
+        require_membership(session, plan.organization_id, user_id)
+        session.add(
+            DoneHandoff(
+                done_record_id=done.id,
+                user_id=user_id,
+                created_at=utcnow(),
             )
+        )
 
     transition_plan(session, plan, "post_done", actor)
     session.refresh(done)

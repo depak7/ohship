@@ -46,8 +46,12 @@ def create_mcp_server(*, enable_oauth: bool = False) -> MCPServer:
         "name": "ohship",
         "instructions": (
             "OhShip — Plan → Approve → Done. "
-            "Authenticate via OAuth (email/Google) over HTTP, or API key for stdio. "
-            "Call list_orgs to discover organization IDs before creating/listing plans."
+            "Authenticate via OAuth (HTTP) or API key (stdio). "
+            "Call list_orgs before create_plan/list_plans. "
+            "Flow: draft → in_review → approved → in_progress → done; "
+            "post_done ships from any pre-done status (auto self-approve). "
+            "Use add_suggestion for review feedback only; use post_done for shipped work. "
+            "request_notifyees queues teammates; they see Done under Sent to me."
         ),
     }
     if enable_oauth:
@@ -106,7 +110,7 @@ def _register_tools(mcp: MCPServer) -> None:
         project: str | None = None,
         organization_id: str | None = None,
     ) -> str:
-        """Create a new Plan in draft status."""
+        """Create a new Plan in draft status. project is required."""
         try:
             return format_result(
                 _client().create_plan(
@@ -167,6 +171,15 @@ def _register_tools(mcp: MCPServer) -> None:
             return _error_message(e)
 
     @mcp.tool()
+    def request_notifyees(plan_id: str, notify_ids: str) -> str:
+        """Add teammates to notify on Done (any plan status). notify_ids is comma-separated user UUIDs. Already-done plans notify immediately."""
+        try:
+            ids = [part.strip() for part in notify_ids.split(",") if part.strip()]
+            return format_result(_client().request_notifyees(plan_id, ids))
+        except Exception as e:
+            return _error_message(e)
+
+    @mcp.tool()
     def add_suggestion(plan_id: str, content: str) -> str:
         """Add a suggestion or comment to a Plan."""
         try:
@@ -206,7 +219,7 @@ def _register_tools(mcp: MCPServer) -> None:
         residual_notes: str | None = None,
         handoff_to: str | None = None,
     ) -> str:
-        """Post a Done summary. links_json is a JSON array of {type, url, label}. handoff_to is comma-separated user UUIDs to notify in-app."""
+        """Post a Done summary from any pre-done status (auto self-approves and claims). links_json is a JSON array of {type, url, label}. handoff_to is comma-separated user UUIDs."""
         import json
 
         try:

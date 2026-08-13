@@ -6,6 +6,7 @@ from ohship.auth import CurrentUser, DbSession
 from ohship.models import Plan, PlanStatus, utcnow
 from ohship.schemas import (
     DoneCreate,
+    NotifyRequestBody,
     PlanCreate,
     PlanDetail,
     PlanListResponse,
@@ -21,9 +22,12 @@ from ohship.services.helpers import plan_to_detail, plan_to_summary
 from ohship.services.orgs import require_membership
 from ohship.services.plans import (
     PlanTransitionError,
+    add_notifyees,
     add_reviewers,
     assert_editable,
+    delete_plan,
     get_plan_or_404,
+    list_plan_projects,
     list_plans,
     transition_plan,
 )
@@ -93,11 +97,28 @@ def get_plans(
     )
 
 
+@router.get("/projects", response_model=list[str])
+def get_plan_projects(
+    session: DbSession,
+    user: CurrentUser,
+    organization_id: UUID = Query(...),
+) -> list[str]:
+    require_membership(session, organization_id, user.id)
+    return list_plan_projects(session, organization_id)
+
+
 @router.get("/{plan_id}", response_model=PlanDetail)
 def get_plan(plan_id: UUID, session: DbSession, user: CurrentUser) -> PlanDetail:
     plan = get_plan_or_404(session, plan_id)
     _assert_plan_access(session, plan, user.id)
     return plan_to_detail(session, plan)
+
+
+@router.delete("/{plan_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_plan(plan_id: UUID, session: DbSession, user: CurrentUser) -> None:
+    plan = get_plan_or_404(session, plan_id)
+    _assert_plan_access(session, plan, user.id)
+    delete_plan(session, plan)
 
 
 @router.patch("/{plan_id}", response_model=PlanDetail)
@@ -166,6 +187,19 @@ def request_reviewers(
             detail=f"Cannot request reviewers from status '{plan.status.value}'",
         )
     add_reviewers(session, plan, user, body.reviewer_ids)
+    return plan_to_detail(session, plan)
+
+
+@router.post("/{plan_id}/notifyees", response_model=PlanDetail)
+def request_notifyees(
+    plan_id: UUID,
+    body: NotifyRequestBody,
+    session: DbSession,
+    user: CurrentUser,
+) -> PlanDetail:
+    plan = get_plan_or_404(session, plan_id)
+    _assert_plan_access(session, plan, user.id)
+    add_notifyees(session, plan, user, body.notify_ids)
     return plan_to_detail(session, plan)
 
 
@@ -244,6 +278,7 @@ def post_plan_done(
             body.summary,
             [link.model_dump() for link in body.links],
             body.residual_notes,
+            body.handoff_notes,
             body.handoff_to,
         )
     except PlanTransitionError as e:

@@ -3,6 +3,7 @@
 const TOKEN_KEY = "ohship_token";
 const API_KEY_STORAGE = "ohship_api_key";
 const ORG_KEY = "ohship_org_id";
+const PROJECT_KEY = "ohship_project";
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;
@@ -35,10 +36,24 @@ export function clearOrgId(): void {
   localStorage.removeItem(ORG_KEY);
 }
 
+export function getProject(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem(PROJECT_KEY);
+}
+
+export function setProject(name: string): void {
+  localStorage.setItem(PROJECT_KEY, name);
+}
+
+export function clearProject(): void {
+  localStorage.removeItem(PROJECT_KEY);
+}
+
 export function clearSession(): void {
   localStorage.removeItem(TOKEN_KEY);
   localStorage.removeItem(API_KEY_STORAGE);
   localStorage.removeItem(ORG_KEY);
+  localStorage.removeItem(PROJECT_KEY);
 }
 
 export function getApiUrl(): string {

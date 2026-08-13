@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
 
-from ohship.models import DoneHandoff, DoneRecord, Plan, PlanReviewRequest, PlanStatus, User, utcnow
+from ohship.models import DoneHandoff, DoneRecord, Plan, PlanNotifyRequest, PlanReviewRequest, PlanStatus, Suggestion, User, utcnow
 
 
 class PlanTransitionError(Exception):
@@ -18,8 +18,21 @@ TRANSITIONS: dict[str, tuple[frozenset[PlanStatus], PlanStatus]] = {
     "request_changes": (frozenset({PlanStatus.in_review}), PlanStatus.changes_requested),
     "approve_plan": (frozenset({PlanStatus.in_review}), PlanStatus.approved),
     "claim_plan": (frozenset({PlanStatus.approved}), PlanStatus.in_progress),
-    "post_done": (frozenset({PlanStatus.in_progress}), PlanStatus.done),
+    "post_done": (
+        frozenset(
+            {
+                PlanStatus.draft,
+                PlanStatus.changes_requested,
+                PlanStatus.in_review,
+                PlanStatus.approved,
+                PlanStatus.in_progress,
+            }
+        ),
+        PlanStatus.done,
+    ),
 }
+
+SHIPPABLE_STATUSES = TRANSITIONS["post_done"][0]
 
 
 def get_plan_or_404(session: Session, plan_id: UUID, organization_id: UUID | None = None) -> Plan:
@@ -104,6 +117,77 @@ def add_reviewers(session: Session, plan: Plan, actor: User, reviewer_ids: list[
     return plan
 
 
+def add_notifyees(session: Session, plan: Plan, actor: User, notify_ids: list[UUID]) -> Plan:
+    from ohship.services.orgs import require_membership
+
+    unique_ids = []
+    seen: set[UUID] = set()
+    for notify_id in notify_ids:
+        if notify_id in seen:
+            continue
+        seen.add(notify_id)
+        unique_ids.append(notify_id)
+
+    existing = {
+        row.notify_user_id
+        for row in session.exec(
+            select(PlanNotifyRequest).where(PlanNotifyRequest.plan_id == plan.id)
+        ).all()
+    }
+
+    newly_added: list[UUID] = []
+    for notify_id in unique_ids:
+        if notify_id in existing:
+            continue
+        require_membership(session, plan.organization_id, notify_id)
+        session.add(
+            PlanNotifyRequest(
+                plan_id=plan.id,
+                notify_user_id=notify_id,
+                requested_by_id=actor.id,
+                created_at=utcnow(),
+            )
+        )
+        newly_added.append(notify_id)
+
+    # Plan already shipped — notify immediately via done handoff.
+    if newly_added and plan.status == PlanStatus.done:
+        done = session.exec(
+            select(DoneRecord).where(DoneRecord.plan_id == plan.id)
+        ).first()
+        if done:
+            existing_handoffs = {
+                row.user_id
+                for row in session.exec(
+                    select(DoneHandoff).where(DoneHandoff.done_record_id == done.id)
+                ).all()
+            }
+            for notify_id in newly_added:
+                if notify_id in existing_handoffs:
+                    continue
+                session.add(
+                    DoneHandoff(
+                        done_record_id=done.id,
+                        user_id=notify_id,
+                        created_at=utcnow(),
+                    )
+                )
+
+    plan.updated_at = utcnow()
+    session.add(plan)
+    session.commit()
+    session.refresh(plan)
+    return plan
+
+
+def list_plan_notify_user_ids(session: Session, plan_id: UUID) -> list[UUID]:
+    return list(
+        session.exec(
+            select(PlanNotifyRequest.notify_user_id).where(PlanNotifyRequest.plan_id == plan_id)
+        ).all()
+    )
+
+
 def list_plans(
     session: Session,
     *,
@@ -138,3 +222,39 @@ def list_plans(
             .where(DoneHandoff.user_id == handoff_to)
         )
     return list(session.exec(query).all())
+
+
+def list_plan_projects(session: Session, organization_id: UUID) -> list[str]:
+    rows = session.exec(
+        select(Plan.project)
+        .where(Plan.organization_id == organization_id, Plan.project.isnot(None))  # type: ignore[union-attr]
+        .distinct()
+        .order_by(Plan.project)  # type: ignore[arg-type]
+    ).all()
+    return [row for row in rows if row]
+
+
+def delete_plan(session: Session, plan: Plan) -> None:
+    """Delete a plan and all related rows."""
+    for suggestion in session.exec(
+        select(Suggestion).where(Suggestion.plan_id == plan.id)
+    ).all():
+        session.delete(suggestion)
+    for review in session.exec(
+        select(PlanReviewRequest).where(PlanReviewRequest.plan_id == plan.id)
+    ).all():
+        session.delete(review)
+    for notify in session.exec(
+        select(PlanNotifyRequest).where(PlanNotifyRequest.plan_id == plan.id)
+    ).all():
+        session.delete(notify)
+    for done in session.exec(
+        select(DoneRecord).where(DoneRecord.plan_id == plan.id)
+    ).all():
+        for handoff in session.exec(
+            select(DoneHandoff).where(DoneHandoff.done_record_id == done.id)
+        ).all():
+            session.delete(handoff)
+        session.delete(done)
+    session.delete(plan)
+    session.commit()

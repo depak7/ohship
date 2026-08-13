@@ -13,6 +13,7 @@ from ohship.models import (
     OrgMembership,
     OrgRole,
     Plan,
+    PlanNotifyRequest,
     PlanReviewRequest,
     Suggestion,
     User,
@@ -178,6 +179,10 @@ def delete_organization(session: Session, org_id: UUID, user_id: UUID) -> None:
             select(PlanReviewRequest).where(PlanReviewRequest.plan_id.in_(plan_ids))  # type: ignore[attr-defined]
         ).all():
             session.delete(review)
+        for notify in session.exec(
+            select(PlanNotifyRequest).where(PlanNotifyRequest.plan_id.in_(plan_ids))  # type: ignore[attr-defined]
+        ).all():
+            session.delete(notify)
         for done in session.exec(
             select(DoneRecord).where(DoneRecord.plan_id.in_(plan_ids))  # type: ignore[attr-defined]
         ).all():
