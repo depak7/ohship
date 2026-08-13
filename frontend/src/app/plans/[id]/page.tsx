@@ -107,6 +107,7 @@ export default function PlanDetailPage() {
   }
 
   async function copyAgentPrompt() {
+    if (!plan) return;
     const prompt = plan.agent_prompt;
     if (!prompt) return;
     await navigator.clipboard.writeText(prompt);

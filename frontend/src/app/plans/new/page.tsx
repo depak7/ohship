@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { AppShell } from "@/components/app-shell";
@@ -9,6 +9,20 @@ import { api } from "@/lib/api";
 import { getOrgId, getProject } from "@/lib/auth";
 
 export default function NewPlanPage() {
+  return (
+    <Suspense
+      fallback={
+        <AppShell>
+          <p className="text-[var(--muted)]">Loading…</p>
+        </AppShell>
+      }
+    >
+      <NewPlanForm />
+    </Suspense>
+  );
+}
+
+function NewPlanForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const [title, setTitle] = useState("");
