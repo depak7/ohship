@@ -187,7 +187,7 @@ export default function PlanDetailPage() {
             const names = (refreshed.done?.handoff_to || notifyBefore).map((u) => u.name);
             setNotifySummary(
               names.length
-                ? `Notified in OhShip: ${names.join(", ")}. Share link copied.`
+                ? `Notified in Planlog: ${names.join(", ")}. Share link copied.`
                 : "Share link copied — paste in Slack for people outside the org."
             );
             setShareLinkCopied(true);

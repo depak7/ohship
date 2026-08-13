@@ -1,5 +1,5 @@
 [project]
-name = "ohship"
+name = "planlog"
 version = "0.1.0"
 description = "Plan → Approve → Done layer for engineering teams"
 readme = "README.md"
@@ -31,9 +31,9 @@ dev = [
 ]
 
 [project.scripts]
-ohship-mcp = "ohship.mcp.server:main"
-ohship-seed = "ohship.scripts.seed:main"
-ohship-agent = "ohship.scripts.agent_install:main"
+planlog-mcp = "planlog.mcp.server:main"
+planlog-seed = "planlog.scripts.seed:main"
+planlog-agent = "planlog.scripts.agent_install:main"
 
 [build-system]
 requires = ["uv_build>=0.11.3,<0.12.0"]

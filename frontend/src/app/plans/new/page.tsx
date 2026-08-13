@@ -70,7 +70,7 @@ export default function NewPlanPage() {
               id="project"
               value={project}
               onChange={(e) => setProject(e.target.value)}
-              placeholder="e.g. ohship, mobile-app"
+              placeholder="e.g. planlog, mobile-app"
               required
             />
             <p className="mt-1 text-xs text-[var(--muted)]">Required — used to group plans in the org.</p>

@@ -67,10 +67,10 @@ function ConsentInner() {
       <Card className="w-full max-w-md">
         <p className="text-sm uppercase tracking-[0.18em] text-[var(--accent)]">MCP OAuth</p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">
-          Allow access to OhShip?
+          Allow access to Planlog?
         </h1>
         <p className="mt-2 text-sm text-[var(--muted)]">
-          An MCP client wants to use your OhShip account (same login as the web app).
+          An MCP client wants to use your Planlog account (same login as the web app).
         </p>
 
         {loading && <p className="mt-6 text-[var(--muted)]">Loading…</p>}
@@ -87,7 +87,7 @@ function ConsentInner() {
               <p className="mt-3">
                 <span className="text-[var(--muted)]">Scopes</span>
                 <br />
-                <span className="font-medium">{scopes.join(", ") || "ohship"}</span>
+                <span className="font-medium">{scopes.join(", ") || "planlog"}</span>
               </p>
             </div>
             <div className="flex gap-3">

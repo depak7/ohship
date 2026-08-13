@@ -3,11 +3,11 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
-from ohship.api.main import app
-from ohship.auth import hash_api_key
-from ohship.db import get_session
-from ohship.models import Organization, User
-from ohship.services.orgs import create_organization
+from planlog.api.main import app
+from planlog.auth import hash_api_key
+from planlog.db import get_session
+from planlog.models import Organization, User
+from planlog.services.orgs import create_organization
 
 
 @pytest.fixture(name="session")

@@ -47,7 +47,7 @@ function LoginInner() {
     <div className="grain flex min-h-screen items-center justify-center px-4 py-10">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
-          <p className="text-sm uppercase tracking-[0.2em] text-[var(--accent)]">OhShip</p>
+          <p className="text-sm uppercase tracking-[0.2em] text-[var(--accent)]">Planlog</p>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">
             Plans written in markdown.
           </h1>

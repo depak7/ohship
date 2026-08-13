@@ -8,4 +8,4 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 
 <!-- END:nextjs-agent-rules -->
 
-For OhShip product workflow (plans, Done, MCP), see the root [`AGENTS.md`](../AGENTS.md).
+For Planlog product workflow (plans, Done, MCP), see the root [`AGENTS.md`](../AGENTS.md).

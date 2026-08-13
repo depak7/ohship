@@ -1,10 +1,7 @@
 {
   "mcpServers": {
-    "ohship": {
-      "url": "http://localhost:8000/mcp",
-      "auth": {
-        "CLIENT_ID": "optional-if-dcr-enabled"
-      }
+    "planlog": {
+      "url": "http://localhost:8000/mcp"
     }
   }
 }

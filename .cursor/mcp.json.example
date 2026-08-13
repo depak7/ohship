@@ -1,13 +1,13 @@
 {
   "mcpServers": {
-    "ohship": {
+    "planlog": {
       "command": "uv",
-      "args": ["run", "ohship-mcp"],
+      "args": ["run", "planlog-mcp"],
       "cwd": "${workspaceFolder}/backend",
       "env": {
-        "OHSHIP_API_URL": "http://localhost:8000",
-        "OHSHIP_API_KEY": "your-api-key-here",
-        "OHSHIP_ORG_ID": "your-organization-uuid"
+        "PLANLOG_API_URL": "http://localhost:8000",
+        "PLANLOG_API_KEY": "your-api-key-here",
+        "PLANLOG_ORG_ID": "your-organization-uuid"
       }
     }
   }

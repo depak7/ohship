@@ -13,7 +13,7 @@ const sourceSerif = Source_Serif_4({
 });
 
 export const metadata: Metadata = {
-  title: "OhShip",
+  title: "Planlog",
   description: "Plan → Approve → Done — markdown plans for teams",
 };
 

@@ -4,10 +4,10 @@ from uuid import UUID
 
 from sqlmodel import Session, create_engine, select
 
-from ohship.config import settings
-from ohship.models import Plan, PlanStatus, User, utcnow
-from ohship.services.done import post_done
-from ohship.services.plans import delete_plan
+from planlog.config import settings
+from planlog.models import Plan, PlanStatus, User, utcnow
+from planlog.services.done import post_done
+from planlog.services.plans import delete_plan
 
 ORG_ID = UUID("aabb51b7-9f76-4e5e-802d-40fe5d1e0d3f")
 OLD_PLAN_IDS = [
@@ -33,9 +33,9 @@ SHIPLOG_SCOPE = """## History
 - Local stack: Postgres 5433, API 8000, frontend 3000
 - Cursor IDE config; MCP OAuth HTTP endpoint
 
-### 2026-08-12 — OhShip Phase 1
+### 2026-08-12 — Planlog Phase 1
 - Plan → Approve → Done state machine, FastAPI, Next.js UI, MCP tools
-- Auth, orgs, invites; Donelog → OhShip rename
+- Auth, orgs, invites; Donelog → Planlog rename
 
 ## Todo
 
@@ -98,7 +98,7 @@ def main() -> None:
             organization_id=ORG_ID,
             title="Shiplog",
             intent=(
-                "Living ship log for OhShip: permanent History of what shipped "
+                "Living ship log for Planlog: permanent History of what shipped "
                 "and a Todo list of what remains."
             ),
             scope=SHIPLOG_SCOPE,
@@ -109,7 +109,7 @@ def main() -> None:
             ),
             owner_id=owner.id,
             team="AX",
-            project="ohship",
+            project="planlog",
             status=PlanStatus.in_progress,
             claimed_by_id=owner.id,
             approved_at=utcnow(),
@@ -134,7 +134,7 @@ def main() -> None:
             ),
             owner_id=owner.id,
             team="AX",
-            project="ohship",
+            project="planlog",
             status=PlanStatus.draft,
             created_at=utcnow(),
             updated_at=utcnow(),
@@ -163,7 +163,7 @@ def main() -> None:
             ),
             owner_id=owner.id,
             team="AX",
-            project="ohship",
+            project="planlog",
             status=PlanStatus.draft,
             created_at=utcnow(),
             updated_at=utcnow(),

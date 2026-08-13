@@ -1,9 +1,9 @@
 "use client";
 
-const TOKEN_KEY = "ohship_token";
-const API_KEY_STORAGE = "ohship_api_key";
-const ORG_KEY = "ohship_org_id";
-const PROJECT_KEY = "ohship_project";
+const TOKEN_KEY = "planlog_token";
+const API_KEY_STORAGE = "planlog_api_key";
+const ORG_KEY = "planlog_org_id";
+const PROJECT_KEY = "planlog_project";
 
 export function getToken(): string | null {
   if (typeof window === "undefined") return null;

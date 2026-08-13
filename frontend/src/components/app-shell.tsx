@@ -60,15 +60,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     function onProjectChange() {
       setActiveProject(getProject() || "");
     }
-    window.addEventListener("ohship-project-change", onProjectChange);
-    return () => window.removeEventListener("ohship-project-change", onProjectChange);
+    window.addEventListener("planlog-project-change", onProjectChange);
+    return () => window.removeEventListener("planlog-project-change", onProjectChange);
   }, []);
 
   function handleProjectChange(value: string) {
     if (value) setProject(value);
     else clearProject();
     setActiveProject(value);
-    window.dispatchEvent(new Event("ohship-project-change"));
+    window.dispatchEvent(new Event("planlog-project-change"));
     if (pathname !== "/") router.push("/");
   }
 
@@ -88,7 +88,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-6">
             <Link href="/" className="text-lg font-semibold tracking-tight">
-              OhShip
+              Planlog
             </Link>
             <nav className="hidden items-center gap-4 text-sm text-[var(--muted)] sm:flex">
               <Link href="/" className={pathname === "/" ? "text-[var(--ink)]" : ""}>

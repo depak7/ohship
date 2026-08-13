@@ -77,7 +77,7 @@ export default async function SharedPlanPage({
   return (
     <main className="mx-auto max-w-3xl px-6 py-10">
       <div className="mb-8 flex flex-wrap items-center justify-between gap-4">
-        <p className="text-sm text-[var(--muted)]">Shared OhShip plan</p>
+        <p className="text-sm text-[var(--muted)]">Shared Planlog plan</p>
         <Link href="/login">
           <Button variant="outline">Sign in to comment or review</Button>
         </Link>

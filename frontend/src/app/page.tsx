@@ -38,8 +38,8 @@ export default function HomePage() {
     function onProjectChange() {
       setProjectFilter(getProject() || "");
     }
-    window.addEventListener("ohship-project-change", onProjectChange);
-    return () => window.removeEventListener("ohship-project-change", onProjectChange);
+    window.addEventListener("planlog-project-change", onProjectChange);
+    return () => window.removeEventListener("planlog-project-change", onProjectChange);
   }, [router, statusFilter, projectFilter, requestedOfMe, sentToMe]);
 
   async function loadPlans() {
@@ -81,7 +81,7 @@ export default function HomePage() {
     setProjectFilter(name);
     if (name) setProject(name);
     else clearProject();
-    window.dispatchEvent(new Event("ohship-project-change"));
+    window.dispatchEvent(new Event("planlog-project-change"));
   }
 
   const groupedPlans = useMemo(() => {

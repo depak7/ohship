@@ -69,7 +69,7 @@ export function DonePanel({ plan }: { plan: PlanDetail }) {
       {handoffRecipients.length > 0 && (
         <section className="rounded-2xl border border-[var(--accent-soft)] bg-[var(--accent-soft)]/40 p-4">
           <p className="text-xs font-semibold uppercase tracking-[0.14em] text-[var(--accent)]">
-            Notified in OhShip
+            Notified in Planlog
           </p>
           <p className="mt-2 text-sm">
             {handoffRecipients.map((u) => u.name).join(", ")} — check{" "}

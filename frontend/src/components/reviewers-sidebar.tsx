@@ -133,7 +133,7 @@ export function ReviewersSidebar({
           {copied ? "Copied prompt" : "Copy agent prompt"}
         </Button>
         <p className="mt-2 text-xs text-[var(--muted)]">
-          Copies a prompt for review or ship workflow with OhShip MCP.
+          Copies a prompt for review or ship workflow with Planlog MCP.
         </p>
       </div>
     </aside>

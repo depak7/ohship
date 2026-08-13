@@ -21,7 +21,7 @@
       "options": {
         "cwd": "${workspaceFolder}/backend",
         "env": {
-          "DATABASE_URL": "postgresql://ohship:ohship@localhost:5433/ohship"
+          "DATABASE_URL": "postgresql://planlog:planlog@localhost:5433/planlog"
         }
       },
       "problemMatcher": [],
@@ -33,11 +33,11 @@
     {
       "label": "backend: seed",
       "type": "shell",
-      "command": "uv run python -m ohship.scripts.seed",
+      "command": "uv run planlog-seed",
       "options": {
         "cwd": "${workspaceFolder}/backend",
         "env": {
-          "DATABASE_URL": "postgresql://ohship:ohship@localhost:5433/ohship"
+          "DATABASE_URL": "postgresql://planlog:planlog@localhost:5433/planlog"
         }
       },
       "problemMatcher": [],

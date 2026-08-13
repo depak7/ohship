@@ -2,15 +2,15 @@ services:
   postgres:
     image: postgres:16
     environment:
-      POSTGRES_USER: ohship
-      POSTGRES_PASSWORD: ohship
-      POSTGRES_DB: ohship
+      POSTGRES_USER: planlog
+      POSTGRES_PASSWORD: planlog
+      POSTGRES_DB: planlog
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ohship -d ohship"]
+      test: ["CMD-SHELL", "pg_isready -U planlog -d planlog"]
       interval: 5s
       timeout: 5s
       retries: 5
@@ -20,7 +20,7 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      DATABASE_URL: postgresql://ohship:ohship@postgres:5432/ohship
+      DATABASE_URL: postgresql://planlog:planlog@postgres:5432/planlog
       BOOTSTRAP_TOKEN: dev
       CORS_ORIGINS: http://localhost:3000
     ports:

@@ -1,13 +1,13 @@
 import pytest
 from sqlmodel import Session
 
-from ohship.models import Organization, OrgMembership, OrgRole, Plan, PlanStatus, User, utcnow
-from ohship.services.plans import PlanTransitionError, add_reviewers, transition_plan
+from planlog.models import Organization, OrgMembership, OrgRole, Plan, PlanStatus, User, utcnow
+from planlog.services.plans import PlanTransitionError, add_reviewers, transition_plan
 
 
 @pytest.fixture
 def owner(session: Session) -> User:
-    from ohship.auth import hash_api_key
+    from planlog.auth import hash_api_key
 
     user = User(name="Owner", email="owner@test.com", api_key_hash=hash_api_key("test"))
     session.add(user)
@@ -18,7 +18,7 @@ def owner(session: Session) -> User:
 
 @pytest.fixture
 def reviewer(session: Session) -> User:
-    from ohship.auth import hash_api_key
+    from planlog.auth import hash_api_key
 
     user = User(name="Reviewer", email="reviewer@test.com", api_key_hash=hash_api_key("test2"))
     session.add(user)
@@ -102,7 +102,7 @@ def test_owner_can_approve(session: Session, plan: Plan, owner: User):
 
 
 def test_post_done_from_in_review_self_approves(session: Session, plan: Plan, owner: User):
-    from ohship.services.done import post_done
+    from planlog.services.done import post_done
 
     transition_plan(session, plan, "submit_for_review", owner)
     assert plan.status == PlanStatus.in_review
@@ -116,7 +116,7 @@ def test_post_done_from_in_review_self_approves(session: Session, plan: Plan, ow
 
 
 def test_post_done_from_draft(session: Session, plan: Plan, owner: User):
-    from ohship.services.done import post_done
+    from planlog.services.done import post_done
 
     post_done(session, plan, owner, "Shipped from draft", [])
     session.refresh(plan)
@@ -138,7 +138,7 @@ def test_add_reviewers(session: Session, plan: Plan, owner: User, reviewer: User
     session.commit()
     transition_plan(session, plan, "submit_for_review", owner)
     add_reviewers(session, plan, owner, [reviewer.id, owner.id])
-    from ohship.models import PlanReviewRequest
+    from planlog.models import PlanReviewRequest
     from sqlmodel import select
 
     rows = list(session.exec(select(PlanReviewRequest).where(PlanReviewRequest.plan_id == plan.id)).all())

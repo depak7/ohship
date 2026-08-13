@@ -4,8 +4,8 @@ import pytest
 from fastapi.testclient import TestClient
 from sqlmodel import Session
 
-from ohship.auth import hash_api_key
-from ohship.models import Organization, OrgMembership, OrgRole, User, utcnow
+from planlog.auth import hash_api_key
+from planlog.models import Organization, OrgMembership, OrgRole, User, utcnow
 
 
 def auth_headers(api_key: str) -> dict[str, str]:
@@ -22,7 +22,7 @@ def test_mcp_oauth_consent_flow(client: TestClient):
     headers = {"Authorization": f"Bearer {token}"}
 
     # Simulate pending authorize state
-    from ohship.oauth.provider import PendingAuth, oauth_provider
+    from planlog.oauth.provider import PendingAuth, oauth_provider
 
     state = "teststate123"
     oauth_provider.pending[state] = PendingAuth(
@@ -31,7 +31,7 @@ def test_mcp_oauth_consent_flow(client: TestClient):
         redirect_uri_provided_explicitly=True,
         client_id="cursor",
         resource="http://localhost:8000/mcp",
-        scopes=["ohship"],
+        scopes=["planlog"],
         oauth_state="client-state",
     )
 

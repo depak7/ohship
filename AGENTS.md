@@ -1,22 +1,22 @@
-# Agent guide — OhShip
+# Agent guide — Planlog
 
-This repo builds **OhShip**: a lightweight **Plan → Approve → Done** layer for engineering teams. Humans and coding agents share markdown plans; Done is permanent history.
+This repo builds **Planlog**: a lightweight **Plan → Approve → Done** layer for engineering teams. Humans and coding agents share markdown plans; Done is permanent history.
 
 For Next.js frontend conventions, see [`frontend/AGENTS.md`](frontend/AGENTS.md).
 
 ---
 
-<!-- ohship:begin -->
+<!-- planlog:begin -->
 
-## OhShip (plans)
+## Planlog (plans)
 
-**Any coding agent:** Before product work, read this section. When you ship, **update OhShip via MCP** — the plan is the source of truth, not chat history.
+**Any coding agent:** Before product work, read this section. When you ship, **update Planlog via MCP** — the plan is the source of truth, not chat history.
 
-OhShip is **Plan → Approve → Done**: markdown plans humans and agents share. Connect the `ohship` MCP server once (see repo README).
+Planlog is **Plan → Approve → Done**: markdown plans humans and agents share. Connect the `planlog` MCP server once (see repo README).
 
 ### When to use it
 
-Use OhShip when work is tied to a **plan_id** or a new feature slice in an org **project**. Do not log shipped work as long suggestion threads — use **Done**.
+Use Planlog when work is tied to a **plan_id** or a new feature slice in an org **project**. Do not log shipped work as long suggestion threads — use **Done**.
 
 ### Agent loop
 
@@ -30,7 +30,7 @@ Use OhShip when work is tied to a **plan_id** or a new feature slice in an org *
 
 | Do | Why |
 |----|-----|
-| Read the plan before editing code | Intent and acceptance criteria live in OhShip |
+| Read the plan before editing code | Intent and acceptance criteria live in Planlog |
 | `post_done` with summary + links when finished | Done is the permanent record |
 | `request_notifyees` for the next implementer | They see it under **Sent to me** |
 
@@ -40,8 +40,8 @@ Use OhShip when work is tied to a **plan_id** or a new feature slice in an org *
 |-------|-----|
 | Use `add_suggestion` to record shipped work | Suggestions are for review feedback, not history |
 | Skip `get_plan` when a plan_id is known | Avoid coding against stale scope |
-| Leave shipped work only in chat or local notes | Update the plan in OhShip via MCP |
+| Leave shipped work only in chat or local notes | Update the plan in Planlog via MCP |
 
-MCP setup (any project): `curl -fsSL https://ohship.depak.dev/install | bash`
+MCP setup (any project): `curl -fsSL https://planlog.depak.dev/install | bash`
 
-<!-- ohship:end -->
+<!-- planlog:end -->
