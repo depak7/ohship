@@ -4,12 +4,14 @@ from __future__ import annotations
 
 import asyncio
 import os
+from urllib.parse import urlparse
 
 from pydantic import AnyHttpUrl
 
 from mcp.server.auth.middleware.auth_context import get_access_token
 from mcp.server.auth.settings import AuthSettings, ClientRegistrationOptions
 from mcp.server.mcpserver import MCPServer
+from mcp.server.transport_security import TransportSecuritySettings
 
 from planlog.config import settings
 from planlog.mcp.api_client import PlanlogAPIClient, PlanlogAPIError, format_result
@@ -38,6 +40,32 @@ def _error_message(e: Exception) -> str:
     if isinstance(e, PlanlogAPIError):
         return f"Error ({e.status_code}): {e.message}"
     return f"Error: {e}"
+
+
+def mcp_transport_security() -> TransportSecuritySettings:
+    """Allow the public API hostname. Default MCP protection only permits localhost."""
+    api = urlparse(settings.api_url)
+    host = api.hostname or "localhost"
+    origin = f"{api.scheme or 'https'}://{host}"
+    frontend = settings.frontend_url.rstrip("/")
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=[
+            host,
+            f"{host}:*",
+            "127.0.0.1:*",
+            "localhost:*",
+            "[::1]:*",
+        ],
+        allowed_origins=[
+            origin,
+            f"{origin}:*",
+            frontend,
+            "http://127.0.0.1:*",
+            "http://localhost:*",
+            "http://[::1]:*",
+        ],
+    )
 
 
 def create_mcp_server(*, enable_oauth: bool = False) -> MCPServer:

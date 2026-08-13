@@ -1,4 +1,5 @@
 from contextlib import asynccontextmanager
+from urllib.parse import urlparse
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,7 +14,7 @@ from mcp.server.auth.settings import ClientRegistrationOptions
 from planlog.api.routes import auth, install, oauth, orgs, plans, public
 from planlog.config import settings
 from planlog.db import check_db_connection
-from planlog.mcp.server import create_mcp_server
+from planlog.mcp.server import create_mcp_server, mcp_transport_security
 from planlog.oauth.provider import MCP_SCOPE, oauth_provider
 from planlog.oauth.token_verifier import PlanlogTokenVerifier
 
@@ -81,5 +82,9 @@ for route in create_auth_routes(
     app.routes.append(route)
 
 # Streamable HTTP MCP routes: /mcp + /.well-known/oauth-protected-resource/mcp
-for route in mcp_http.streamable_http_app().routes:
+_mcp_host = urlparse(settings.api_url).hostname or "0.0.0.0"
+for route in mcp_http.streamable_http_app(
+    transport_security=mcp_transport_security(),
+    host=_mcp_host,
+).routes:
     app.routes.append(route)
