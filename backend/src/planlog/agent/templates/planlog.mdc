@@ -1,0 +1,15 @@
+---
+description: Planlog plan workflow — read agent instructions (planlog:begin); post_done when shipped
+alwaysApply: false
+---
+
+# Planlog
+
+When the task involves a Planlog **plan_id**, shipping a feature slice, or updating plan/Done state:
+
+1. Read the **Planlog** section in your agent instructions file — search for `planlog:begin` (`AGENTS.md`, `CLAUDE.md`, or equivalent).
+2. Use MCP server **`planlog`**: `get_plan` before coding, `post_done` when shipped.
+3. Use `add_suggestion` only for **review feedback**, not for recording shipped work.
+4. Prefer `request_notifyees` over ad-hoc comments when handing off to teammates.
+
+If no plan applies (chores, deps, formatting), skip Planlog tools.
