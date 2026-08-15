@@ -3,6 +3,26 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Member, PlanDetail, UserBrief } from "@/lib/api";
+import { formatWhen } from "@/lib/utils";
+
+/**
+ * What to show under a reviewer's name.
+ *
+ * Only `approved_by` is recorded, so "Approved" is claimed for that person alone. Everyone
+ * else on a plan that has moved past review gets "Review closed" rather than the old
+ * hardcoded "Awaiting review", which kept claiming a decision was outstanding after one
+ * had already been made.
+ */
+function reviewerState(plan: PlanDetail, reviewerId: string): { label: string; approved: boolean } {
+  if (plan.approved_by?.id === reviewerId) {
+    const when = formatWhen(plan.approved_at);
+    return { label: when ? `Approved · ${when}` : "Approved", approved: true };
+  }
+  if (plan.status === "changes_requested") return { label: "Changes requested", approved: false };
+  if (plan.status === "draft") return { label: "Not yet submitted", approved: false };
+  if (plan.status === "in_review") return { label: "Awaiting review", approved: false };
+  return { label: "Review closed", approved: false };
+}
 
 export function ReviewersSidebar({
   plan,
@@ -111,15 +131,26 @@ export function ReviewersSidebar({
         <p className="text-sm text-[var(--muted)]">No reviewers yet.</p>
       ) : (
         <ul className="space-y-3">
-          {(plan.reviewers || []).map((reviewer) => (
-            <li key={reviewer.id} className="flex items-center gap-2">
-              <Avatar name={reviewer.name} url={reviewer.avatar_url} />
-              <div className="min-w-0">
-                <p className="truncate text-sm font-medium">{reviewer.name}</p>
-                <p className="text-xs text-[var(--muted)]">Awaiting review</p>
-              </div>
-            </li>
-          ))}
+          {(plan.reviewers || []).map((reviewer) => {
+            const state = reviewerState(plan, reviewer.id);
+            return (
+              <li key={reviewer.id} className="flex items-center gap-2">
+                <Avatar name={reviewer.name} url={reviewer.avatar_url} />
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-medium">{reviewer.name}</p>
+                  <p
+                    className={
+                      state.approved
+                        ? "truncate text-xs font-medium text-[var(--accent)]"
+                        : "truncate text-xs text-[var(--muted)]"
+                    }
+                  >
+                    {state.label}
+                  </p>
+                </div>
+              </li>
+            );
+          })}
         </ul>
       )}
 

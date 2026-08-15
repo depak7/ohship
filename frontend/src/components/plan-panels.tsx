@@ -5,6 +5,7 @@ import { Badge, Button } from "@/components/ui";
 import { PlanDetail, STATUS_LABELS } from "@/lib/api";
 import { Markdown } from "@/components/markdown";
 import { ensureAnyoneLink } from "@/components/share-sidebar";
+import { formatWhen } from "@/lib/utils";
 
 export function DonePanel({ plan }: { plan: PlanDetail }) {
   const [copied, setCopied] = useState<"link" | "handoff" | null>(null);
@@ -52,9 +53,9 @@ export function DonePanel({ plan }: { plan: PlanDetail }) {
               <span className="font-medium text-[var(--ink)]">{plan.project}</span>
             )}
             {plan.project && " · "}
-            Shipped by {plan.done.posted_by.name} ·{" "}
-            {new Date(plan.done.posted_at).toLocaleString()}
+            Shipped by {plan.done.posted_by.name} · {formatWhen(plan.done.posted_at)}
           </p>
+          <PlanLifecycle plan={plan} />
         </div>
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" className="text-xs" onClick={copyShareLink}>
@@ -134,4 +135,62 @@ export function DonePanel({ plan }: { plan: PlanDetail }) {
 
 export function PlanStatusBadge({ status }: { status: keyof typeof STATUS_LABELS }) {
   return <Badge variant={status}>{STATUS_LABELS[status]}</Badge>;
+}
+
+function CheckIcon() {
+  return (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={3}
+      strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden>
+      <path d="M4 12.5l5.5 5.5L20 6" />
+    </svg>
+  );
+}
+
+function Fact({
+  label,
+  children,
+  tone = "muted",
+}: {
+  label: string;
+  children: React.ReactNode;
+  tone?: "muted" | "accent";
+}) {
+  return (
+    <span className="inline-flex items-baseline gap-1.5">
+      <span className="text-[var(--muted)]">{label}</span>
+      <span className={tone === "accent" ? "font-medium text-[var(--accent)]" : "font-medium text-[var(--ink)]"}>
+        {children}
+      </span>
+    </span>
+  );
+}
+
+/**
+ * Who did what, and when. `approved_by`, `approved_at` and `claimed_by` all come down on the
+ * plan payload but had no home in the UI, so an approved plan looked identical to one nobody
+ * had touched.
+ */
+export function PlanLifecycle({ plan }: { plan: PlanDetail }) {
+  const approved = plan.approved_by;
+  const claimed = plan.claimed_by;
+  if (!approved && !claimed) return null;
+
+  return (
+    <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm">
+      {approved && (
+        <span className="inline-flex items-center gap-1.5">
+          <span className="text-[var(--accent)]">
+            <CheckIcon />
+          </span>
+          <Fact label="Approved by" tone="accent">
+            {approved.name}
+          </Fact>
+          {plan.approved_at && (
+            <span className="text-[var(--muted)]">· {formatWhen(plan.approved_at)}</span>
+          )}
+        </span>
+      )}
+      {claimed && <Fact label="Claimed by">{claimed.name}</Fact>}
+    </div>
+  );
 }

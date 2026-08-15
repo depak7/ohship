@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
 import { Button, Card, Label, Textarea } from "@/components/ui";
-import { DonePanel, PlanStatusBadge } from "@/components/plan-panels";
+import { DonePanel, PlanLifecycle, PlanStatusBadge } from "@/components/plan-panels";
 import { Markdown } from "@/components/markdown";
 import { NotifySidebar } from "@/components/notify-sidebar";
 import { OpenInAgent } from "@/components/open-in-agent";
@@ -274,6 +274,7 @@ export default function PlanDetailPage() {
                 )}
                 {plan.team && ` · ${plan.team}`}
               </p>
+              <PlanLifecycle plan={plan} />
             </div>
             <PlanStatusBadge status={plan.status} />
           </div>
