@@ -7,18 +7,28 @@ from planlog.api.main import app
 from planlog.auth import hash_api_key
 from planlog.db import get_session
 from planlog.models import Organization, User
+from planlog.oauth import provider as provider_module
 from planlog.services.orgs import create_organization
 
 
-@pytest.fixture(name="session")
-def session_fixture():
+@pytest.fixture(name="test_engine")
+def test_engine_fixture(monkeypatch):
     engine = create_engine(
         "sqlite://",
         connect_args={"check_same_thread": False},
         poolclass=StaticPool,
     )
     SQLModel.metadata.create_all(engine)
-    with Session(engine) as session:
+    # The OAuth provider opens its own sessions off a module-level engine rather than going
+    # through get_session, so overriding the dependency alone would leave it talking to the
+    # developer's real Postgres.
+    monkeypatch.setattr(provider_module, "engine", engine)
+    return engine
+
+
+@pytest.fixture(name="session")
+def session_fixture(test_engine):
+    with Session(test_engine) as session:
         yield session
 
 

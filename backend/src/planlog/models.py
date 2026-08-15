@@ -277,3 +277,25 @@ class OAuthPendingRecord(SQLModel, table=True):
         default_factory=utcnow,
         sa_column=Column(DateTime(timezone=True), nullable=False),
     )
+
+
+class OAuthGrantRecord(SQLModel, table=True):
+    """Authorization codes and refresh tokens.
+
+    These have to outlive the process that minted them: the browser POSTs /oauth/approve to
+    one dyno and the MCP client POSTs /token to another, so an in-memory grant produces
+    "authorization code does not exist". `expires_at` is stored so rows can be swept.
+    """
+
+    __tablename__ = "oauth_grants"
+
+    key: str = Field(primary_key=True, max_length=255)
+    kind: str = Field(max_length=16, index=True)  # "code" | "refresh"
+    payload: dict[str, Any] = Field(sa_column=Column(JSON, nullable=False))
+    expires_at: datetime = Field(
+        sa_column=Column(DateTime(timezone=True), nullable=False, index=True)
+    )
+    created_at: datetime = Field(
+        default_factory=utcnow,
+        sa_column=Column(DateTime(timezone=True), nullable=False),
+    )

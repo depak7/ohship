@@ -90,8 +90,29 @@ def _note(msg: str) -> None:
     print(msg)
 
 
+class UnsafeToRewrite(Exception):
+    """The config parses only as JSONC — rewriting it would drop the user's comments."""
+
+
+_LINE_COMMENT = re.compile(r"(^|\s)//.*$", re.MULTILINE)
+_BLOCK_COMMENT = re.compile(r"/\*.*?\*/", re.DOTALL)
+_TRAILING_COMMA = re.compile(r",(\s*[}\]])")
+
+
+def _strip_jsonc(raw: str) -> str:
+    text = _BLOCK_COMMENT.sub("", raw)
+    text = _LINE_COMMENT.sub(r"\1", text)
+    return _TRAILING_COMMA.sub(r"\1", text)
+
+
 def _read_json(path: Path) -> dict:
-    """Tolerant JSON read — a corrupt or empty config must not abort the install."""
+    """Read a config we intend to rewrite.
+
+    Several of these files are JSONC by spec — VS Code's `mcp.json` allows comments, and
+    opencode's schema sets `allowComments`. Round-tripping those through `json.dumps` would
+    silently delete the user's comments, so refuse instead and let the caller print the
+    snippet to paste. Genuinely corrupt files still get backed up and replaced.
+    """
     if not path.is_file():
         return {}
     raw = path.read_text(encoding="utf-8").strip()
@@ -100,10 +121,14 @@ def _read_json(path: Path) -> dict:
     try:
         data = json.loads(raw)
     except json.JSONDecodeError:
-        backup = path.with_suffix(path.suffix + ".planlog-bak")
-        shutil.copyfile(path, backup)
-        print(f"  ! {path} is not valid JSON — backed up to {backup.name}, rewriting")
-        return {}
+        try:
+            json.loads(_strip_jsonc(raw))
+        except json.JSONDecodeError:
+            backup = path.with_suffix(path.suffix + ".planlog-bak")
+            shutil.copyfile(path, backup)
+            print(f"  ! {path} is not valid JSON — backed up to {backup.name}, rewriting")
+            return {}
+        raise UnsafeToRewrite(str(path))
     return data if isinstance(data, dict) else {}
 
 
@@ -120,6 +145,21 @@ def merge_mcp(path: Path, entry: dict, key: str = "mcpServers") -> None:
     servers["planlog"] = entry
     data[key] = servers
     _write_json(path, data)
+
+
+def merge_mcp_safe(path: Path, entry: dict, key: str = "mcpServers", label: str = "") -> str:
+    """merge_mcp, but never destroys a hand-commented config."""
+    suffix = f" ({label})" if label else ""
+    try:
+        merge_mcp(path, entry, key=key)
+    except UnsafeToRewrite:
+        snippet = json.dumps({key: {"planlog": entry}}, indent=2)
+        return (
+            f"  ! {path}{suffix} has comments — not rewriting it.\n"
+            f"    Add this to it yourself:\n"
+            + "\n".join(f"      {line}" for line in snippet.splitlines())
+        )
+    return f"  {path} — planlog MCP merged{suffix}"
 
 
 def graft_snippet(target: Path, header: str, snippet: str) -> str:
@@ -212,6 +252,8 @@ AGENTS: tuple[AgentSpec, ...] = (
         "# Copilot instructions\n\n",
     ),
     AgentSpec("windsurf", "Windsurf", ".windsurf/rules/planlog.md", None),
+    # opencode reads AGENTS.md from the project root and ~/.config/opencode/AGENTS.md.
+    AgentSpec("opencode", "opencode", "AGENTS.md", ".config/opencode/AGENTS.md"),
     AgentSpec("universal", "Any other agent (AGENTS.md only)", "AGENTS.md", None),
 )
 
@@ -224,6 +266,24 @@ AGENT_MD_TARGETS: tuple[tuple[str, str], ...] = (
     ("GEMINI.md", "# Gemini\n\n"),
     (".github/copilot-instructions.md", "# Copilot instructions\n\n"),
 )
+
+
+def _opencode_dir() -> Path:
+    """opencode's global config dir. Honours XDG_CONFIG_HOME, defaults to ~/.config."""
+    return Path(os.environ.get("XDG_CONFIG_HOME", HOME / ".config")) / "opencode"
+
+
+def _opencode_config(opts: "InstallOptions") -> Path:
+    """Pick the config file to edit.
+
+    opencode accepts `opencode.json` or `opencode.jsonc`. If the user already has one, edit
+    that one — writing a second file would leave two configs where opencode reads one.
+    """
+    base = _opencode_dir() if opts.is_global else opts.repo
+    for name in ("opencode.json", "opencode.jsonc"):
+        if (base / name).is_file():
+            return base / name
+    return base / "opencode.json"
 
 
 def _vscode_user_mcp() -> Path:
@@ -250,6 +310,9 @@ def detect_agents(repo: Path) -> set[str]:
         found.add("copilot")
     if (HOME / ".codeium" / "windsurf").is_dir() or shutil.which("windsurf"):
         found.add("windsurf")
+    if _opencode_dir().is_dir() or (repo / "opencode.json").is_file() \
+            or (repo / "opencode.jsonc").is_file() or shutil.which("opencode"):
+        found.add("opencode")
 
     return found
 
@@ -282,8 +345,7 @@ def _entry(opts: InstallOptions) -> dict:
 
 def install_cursor(opts: InstallOptions) -> None:
     base = HOME / ".cursor" if opts.is_global else opts.repo / ".cursor"
-    merge_mcp(base / "mcp.json", _entry(opts))
-    _note(f"  {base / 'mcp.json'} — planlog MCP merged")
+    _note(merge_mcp_safe(base / "mcp.json", _entry(opts)))
 
     rule = base / "rules" / "planlog.mdc"
     _note(f"  {rule} — {_write_file(rule, _render_rule(opts))}")
@@ -309,13 +371,11 @@ def install_claude(opts: InstallOptions) -> None:
                 _note("  claude mcp add --scope user planlog — registered (all projects)")
                 return
         path = HOME / ".claude.json"
-        merge_mcp(path, _entry(opts))
-        _note(f"  {path} — planlog MCP merged (Claude Code, user scope)")
+        _note(merge_mcp_safe(path, _entry(opts), label="Claude Code, user scope"))
         return
 
     path = opts.repo / ".mcp.json"
-    merge_mcp(path, _entry(opts))
-    _note(f"  {path} — planlog MCP merged (Claude Code, project scope)")
+    _note(merge_mcp_safe(path, _entry(opts), label="Claude Code, project scope"))
 
 
 def install_codex(opts: InstallOptions) -> None:
@@ -331,14 +391,13 @@ def install_gemini(opts: InstallOptions) -> None:
     entry = _entry(opts)
     if opts.mode == "oauth":
         entry = {"httpUrl": opts.mcp_url}  # Gemini CLI's key for streamable HTTP
-    merge_mcp(base / "settings.json", entry)
-    _note(f"  {base / 'settings.json'} — planlog MCP merged (Gemini CLI)")
+    _note(merge_mcp_safe(base / "settings.json", entry, label="Gemini CLI"))
 
 
 def install_copilot(opts: InstallOptions) -> None:
     path = _vscode_user_mcp() if opts.is_global else opts.repo / ".vscode" / "mcp.json"
-    merge_mcp(path, _entry(opts), key="servers")  # VS Code uses "servers", not "mcpServers"
-    _note(f"  {path} — planlog MCP merged (VS Code / Copilot)")
+    # VS Code uses "servers", not "mcpServers", and its mcp.json officially allows comments.
+    _note(merge_mcp_safe(path, _entry(opts), key="servers", label="VS Code / Copilot"))
 
 
 def install_windsurf(opts: InstallOptions) -> None:
@@ -346,8 +405,30 @@ def install_windsurf(opts: InstallOptions) -> None:
     entry = _entry(opts)
     if opts.mode == "oauth":
         entry = {"serverUrl": opts.mcp_url}
-    merge_mcp(path, entry)
-    _note(f"  {path} — planlog MCP merged (Windsurf, all projects)")
+    _note(merge_mcp_safe(path, entry, label="Windsurf, all projects"))
+
+
+def install_opencode(opts: InstallOptions) -> None:
+    # opencode's schema differs from every other agent: the key is "mcp" (not "mcpServers"),
+    # remote servers use {"type": "remote", ...}, and local ones take a single `command`
+    # array plus `environment` rather than command/args/env.
+    if opts.mode == "stdio":
+        entry = {
+            "type": "local",
+            "command": ["uvx", "--from", GIT_PACKAGE, "planlog-mcp"],
+            "environment": {
+                "PLANLOG_API_URL": opts.api_url.rstrip("/"),
+                "PLANLOG_API_KEY": opts.api_key,
+                "PLANLOG_ORG_ID": opts.org_id,
+            },
+            "enabled": True,
+        }
+    else:
+        entry = {"type": "remote", "url": opts.mcp_url, "enabled": True}
+
+    path = _opencode_config(opts)
+    scope = "all projects" if opts.is_global else "this project"
+    _note(merge_mcp_safe(path, entry, key="mcp", label=f"opencode, {scope}"))
 
 
 def install_universal(opts: InstallOptions) -> None:
@@ -361,6 +442,7 @@ INSTALLERS = {
     "gemini": install_gemini,
     "copilot": install_copilot,
     "windsurf": install_windsurf,
+    "opencode": install_opencode,
     "universal": install_universal,
 }
 
@@ -531,6 +613,8 @@ def run_install(opts: InstallOptions) -> int:
         print("VS Code: open mcp.json and press Start on the planlog server.")
     if "windsurf" in active:
         print("Windsurf: Settings → MCP → Refresh, then authenticate planlog.")
+    if "opencode" in active:
+        print("opencode: restart `opencode`, then /mcp — it runs the OAuth flow on first use.")
     print()
     print(f"MCP endpoint: {opts.mcp_url}")
     return 0

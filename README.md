@@ -66,7 +66,11 @@ The installer is **interactive**. It asks two questions, then writes only what y
 | Gemini CLI | `GEMINI.md` | `.gemini/settings.json` | `~/.gemini/settings.json`, `~/.gemini/GEMINI.md` |
 | Copilot / VS Code | `.github/copilot-instructions.md` | `.vscode/mcp.json` | VS Code user `mcp.json` |
 | Windsurf | `.windsurf/rules/planlog.md` | — (Windsurf is user-scoped) | `~/.codeium/windsurf/mcp_config.json` |
+| opencode | `AGENTS.md` | `opencode.json` (`mcp` key) | `~/.config/opencode/opencode.json`, `~/.config/opencode/AGENTS.md` |
 | Any other | `AGENTS.md` | — | — |
+
+Configs that allow comments (`.vscode/mcp.json`, `opencode.jsonc`) are never rewritten — if
+yours has comments the installer prints the snippet to paste instead of dropping them.
 
 Re-running is safe: the `planlog:begin … planlog:end` block is **replaced**, not duplicated, and
 existing MCP servers in each config are preserved.

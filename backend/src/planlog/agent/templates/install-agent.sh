@@ -24,7 +24,8 @@ usage() {
 Usage: curl -fsSL $INSTALL_URL | bash -s -- [options]
 
   --global             Install for every project on this laptop (user config)
-  --agent NAME         cursor | claude | codex | gemini | copilot | windsurf | universal
+  --agent NAME         cursor | claude | codex | gemini | copilot | windsurf | opencode
+                       | universal
                        (repeatable; skips the interactive picker)
   --repo PATH          Target project (default: .)
   --api-url URL        Planlog API (default: __PLANLOG_DEFAULT_API_URL__)
