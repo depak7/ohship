@@ -4,10 +4,22 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Planlog — Plan → Approve → Done</title>
-  <meta name="description" content="Markdown plans humans and coding agents share. Agents read the plan before coding and post Done when they ship." />
+  <meta name="description" content="Markdown plans humans and coding agents share. Agents read the plan before coding and post Done when they ship. One command wires MCP into Cursor, Claude Code, Codex, Gemini, Copilot and Windsurf." />
+  <meta name="theme-color" content="#f3efe6" media="(prefers-color-scheme: light)" />
+  <meta name="theme-color" content="#0e1512" media="(prefers-color-scheme: dark)" />
+
+  <meta property="og:type" content="website" />
+  <meta property="og:title" content="Planlog — Plan → Approve → Done" />
+  <meta property="og:description" content="Markdown plans humans and coding agents share. One command wires MCP into every agent on your machine." />
+  <meta property="og:url" content="__SITE_URL__" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="Planlog — Plan → Approve → Done" />
+  <meta name="twitter:description" content="Markdown plans humans and coding agents share." />
+
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f7a5f'/%3E%3Cpath d='M9 16.5l4.5 4.5L23 11.5' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&display=swap" rel="stylesheet" />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
     :root {
       --bg: #f3efe6;
@@ -16,187 +28,558 @@
       --muted: #5d6b62;
       --line: #d8d1c3;
       --accent: #0f7a5f;
+      --accent-ink: #0b5a46;
       --accent-soft: #d8efe6;
+      --term-bg: #121a16;
+      --term-bar: #1b2621;
+      --term-ink: #e8efe9;
+      --term-muted: #8ea296;
       --shadow: 0 18px 50px rgba(23, 33, 27, 0.08);
+      --shadow-lg: 0 28px 70px rgba(23, 33, 27, 0.14);
+      --radius: 1rem;
     }
+
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0e1512;
+        --bg-elevated: #16201b;
+        --ink: #e9efe9;
+        --muted: #9aab9f;
+        --line: #26332c;
+        --accent: #4ac59c;
+        --accent-ink: #7fdcbb;
+        --accent-soft: #16352b;
+        --term-bg: #060b09;
+        --term-bar: #101815;
+        --shadow: 0 18px 50px rgba(0, 0, 0, 0.4);
+        --shadow-lg: 0 28px 70px rgba(0, 0, 0, 0.55);
+      }
+    }
+
     * { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body {
       margin: 0;
       min-height: 100vh;
       color: var(--ink);
-      font-family: Sora, system-ui, sans-serif;
+      font-family: Sora, system-ui, -apple-system, sans-serif;
+      -webkit-font-smoothing: antialiased;
       background:
-        radial-gradient(circle at top left, rgba(15, 122, 95, 0.08), transparent 32%),
-        linear-gradient(180deg, #f7f3ea 0%, var(--bg) 40%, #ebe4d7 100%);
+        radial-gradient(circle at 12% -5%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 38%),
+        radial-gradient(circle at 88% 8%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 34%),
+        var(--bg);
+      background-attachment: fixed;
     }
     a { color: inherit; text-decoration: none; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 0.4rem; }
+
+    /* ---------------------------------------------------------------- header */
     header {
-      position: sticky; top: 0; z-index: 20;
-      border-bottom: 1px solid var(--line);
-      background: color-mix(in srgb, var(--bg) 88%, white);
-      backdrop-filter: blur(8px);
+      position: sticky; top: 0; z-index: 30;
+      border-bottom: 1px solid transparent;
+      background: color-mix(in srgb, var(--bg) 80%, transparent);
+      backdrop-filter: blur(12px) saturate(1.4);
+      transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
-    .bar, .wrap { max-width: 64rem; margin: 0 auto; padding: 0 1rem; }
-    .bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: 0.75rem; padding-bottom: 0.75rem; }
-    .logo { font-size: 1.125rem; font-weight: 600; letter-spacing: -0.02em; }
-    nav { display: none; gap: 1.25rem; font-size: 0.875rem; color: var(--muted); }
-    @media (min-width: 640px) { nav { display: flex; } }
+    header.scrolled { border-bottom-color: var(--line); box-shadow: 0 6px 24px -18px rgba(0,0,0,0.5); }
+    .bar, .wrap { max-width: 66rem; margin: 0 auto; padding: 0 1.25rem; }
+    .bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: 0.7rem; padding-bottom: 0.7rem; }
+
+    .logo { display: inline-flex; align-items: center; gap: 0.55rem; font-size: 1.05rem; font-weight: 600; letter-spacing: -0.02em; }
+    .logo-mark {
+      display: grid; place-items: center; width: 1.65rem; height: 1.65rem;
+      border-radius: 0.5rem; background: var(--accent); color: #fff; flex: none;
+    }
+    .logo-mark svg { width: 1rem; height: 1rem; }
+
+    nav { display: none; gap: 1.4rem; font-size: 0.875rem; color: var(--muted); }
+    @media (min-width: 800px) { nav { display: flex; } }
+    nav a { position: relative; padding: 0.2rem 0; transition: color 0.15s ease; }
+    nav a::after {
+      content: ""; position: absolute; left: 0; right: 100%; bottom: -2px; height: 1.5px;
+      background: var(--accent); transition: right 0.2s ease;
+    }
     nav a:hover { color: var(--ink); }
+    nav a:hover::after { right: 0; }
+
     .actions { display: flex; gap: 0.5rem; align-items: center; }
     .btn {
-      display: inline-flex; align-items: center; justify-content: center;
-      border-radius: 0.75rem; padding: 0.6rem 1rem; font-size: 0.875rem; font-weight: 500;
-      border: 0; cursor: pointer; font-family: inherit;
+      display: inline-flex; align-items: center; justify-content: center; gap: 0.45rem;
+      border-radius: 0.7rem; padding: 0.55rem 0.95rem; font-size: 0.875rem; font-weight: 500;
+      border: 1px solid transparent; cursor: pointer; font-family: inherit; white-space: nowrap;
+      transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
     }
-    .btn-primary { background: var(--ink); color: var(--bg); }
-    .btn-outline { background: transparent; border: 1px solid var(--line); color: var(--ink); }
-    .btn-ghost { background: transparent; color: var(--ink); }
-    .hero { padding: 4rem 0 6rem; }
-    .kicker { font-size: 0.875rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
-    h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 600; letter-spacing: -0.03em; max-width: 48rem; margin: 0.75rem 0 0; }
-    .lede { max-width: 36rem; margin-top: 1rem; font-size: 1.125rem; color: var(--muted); line-height: 1.6; }
-    .cta { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2rem; }
+    .btn:active { transform: translateY(1px); }
+    .btn-primary { background: var(--ink); color: var(--bg); box-shadow: 0 8px 20px -12px rgba(0,0,0,0.7); }
+    .btn-primary:hover { background: color-mix(in srgb, var(--ink) 88%, var(--accent)); }
+    .btn-outline { background: transparent; border-color: var(--line); color: var(--ink); }
+    .btn-outline:hover { border-color: var(--accent); color: var(--accent-ink); background: color-mix(in srgb, var(--accent) 7%, transparent); }
+    .btn-ghost { background: transparent; color: var(--muted); }
+    .btn-ghost:hover { color: var(--ink); }
+    .btn-lg { padding: 0.75rem 1.3rem; font-size: 0.95rem; }
+
+    .icon-btn {
+      display: inline-grid; place-items: center; width: 2.1rem; height: 2.1rem;
+      border-radius: 0.6rem; color: var(--muted); border: 1px solid transparent;
+      transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+    .icon-btn:hover { color: var(--ink); background: color-mix(in srgb, var(--ink) 6%, transparent); border-color: var(--line); }
+    .icon-btn svg { width: 1.15rem; height: 1.15rem; }
+    @media (max-width: 480px) { .hide-xs { display: none; } }
+
+    /* ---------------------------------------------------------------- hero */
+    .hero { padding: 4.5rem 0 3.5rem; }
+    .pill {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      border: 1px solid color-mix(in srgb, var(--accent) 35%, var(--line));
+      background: color-mix(in srgb, var(--accent) 10%, transparent);
+      color: var(--accent-ink);
+      border-radius: 999px; padding: 0.32rem 0.75rem; font-size: 0.78rem; font-weight: 500;
+    }
+    .pill .dot { width: 0.4rem; height: 0.4rem; border-radius: 999px; background: var(--accent); }
+    h1 {
+      font-size: clamp(2.1rem, 5.4vw, 3.4rem); font-weight: 600; letter-spacing: -0.035em;
+      line-height: 1.08; max-width: 20ch; margin: 1.1rem 0 0;
+    }
+    h1 .grad {
+      background: linear-gradient(100deg, var(--accent) 10%, color-mix(in srgb, var(--accent) 55%, var(--ink)) 90%);
+      -webkit-background-clip: text; background-clip: text; color: transparent;
+    }
+    .lede { max-width: 38rem; margin-top: 1.1rem; font-size: 1.08rem; color: var(--muted); line-height: 1.65; }
+    .cta { display: flex; flex-wrap: wrap; gap: 0.7rem; margin-top: 1.9rem; align-items: center; }
+    .cta-note { font-size: 0.82rem; color: var(--muted); }
+
+    /* ---------------------------------------------------------------- terminal */
+    .terminal {
+      margin-top: 2rem; border-radius: var(--radius); overflow: hidden;
+      background: var(--term-bg); border: 1px solid rgba(255, 255, 255, 0.09);
+      box-shadow: var(--shadow-lg);
+    }
+    .terminal-bar {
+      display: flex; align-items: center; gap: 0.6rem;
+      padding: 0.55rem 0.7rem 0.55rem 0.9rem;
+      background: var(--term-bar); border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .dots { display: flex; gap: 0.36rem; }
+    .dots i { width: 0.65rem; height: 0.65rem; border-radius: 999px; background: #3a4a42; }
+    .dots i:nth-child(1) { background: #f0655a; }
+    .dots i:nth-child(2) { background: #f3bd4e; }
+    .dots i:nth-child(3) { background: #4fc08d; }
+    .terminal-title {
+      flex: 1; text-align: center; font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.72rem; color: var(--term-muted); letter-spacing: 0.04em;
+    }
+    .copy {
+      display: inline-flex; align-items: center; gap: 0.35rem; flex: none;
+      border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05);
+      color: var(--term-muted); border-radius: 0.5rem; padding: 0.28rem 0.55rem;
+      font-family: inherit; font-size: 0.72rem; font-weight: 500; cursor: pointer;
+      transition: color 0.15s ease, background 0.15s ease, border-color 0.15s ease;
+    }
+    .copy:hover { color: #fff; background: rgba(255,255,255,0.12); border-color: rgba(255,255,255,0.24); }
+    .copy.done { color: #4fc08d; border-color: rgba(79,192,141,0.5); background: rgba(79,192,141,0.12); }
+    .copy svg { width: 0.85rem; height: 0.85rem; }
+    .copy .label { display: none; }
+    @media (min-width: 520px) { .copy .label { display: inline; } }
+
+    .terminal pre {
+      margin: 0; padding: 1rem 1.1rem; overflow-x: auto;
+      color: var(--term-ink); font-size: 0.875rem; line-height: 1.75;
+      background: transparent; border-radius: 0;
+    }
+    .terminal code { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .term-prompt { color: #4fc08d; user-select: none; margin-right: 0.5rem; }
+    .term-flag { color: #f3bd4e; }
+    .term-url { color: #7fb3f5; }
+    .term-comment { color: var(--term-muted); }
+    .term-ok { color: #4fc08d; }
+    .term-dim { color: var(--term-muted); }
+    .term-sel { color: #fff; font-weight: 500; }
+    .caret {
+      display: inline-block; width: 0.5rem; height: 1em; vertical-align: -0.15em;
+      background: #4fc08d; animation: blink 1.1s steps(2, start) infinite;
+    }
+    @keyframes blink { 0%, 50% { opacity: 1; } 50.01%, 100% { opacity: 0; } }
+
+    /* ---------------------------------------------------------------- sections */
     section { border-top: 1px solid var(--line); padding: 4rem 0; }
-    h2 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; margin: 0; }
-    .sub { margin-top: 0.5rem; max-width: 36rem; color: var(--muted); }
-    .grid3 { display: grid; gap: 1rem; margin-top: 2rem; }
-    @media (min-width: 640px) { .grid3 { grid-template-columns: repeat(3, 1fr); } .grid2 { grid-template-columns: 1fr 1fr; } }
+    .eyebrow { font-size: 0.75rem; letter-spacing: 0.18em; text-transform: uppercase; color: var(--accent); font-weight: 500; margin: 0; }
+    h2 { font-size: clamp(1.5rem, 3vw, 1.95rem); font-weight: 600; letter-spacing: -0.025em; margin: 0.6rem 0 0; }
+    .sub { margin-top: 0.6rem; max-width: 40rem; color: var(--muted); line-height: 1.6; }
+
+    .grid3 { display: grid; gap: 1rem; margin-top: 2.25rem; }
+    .grid2 { display: grid; gap: 1rem; margin-top: 1.75rem; }
+    @media (min-width: 720px) { .grid3 { grid-template-columns: repeat(3, 1fr); } .grid2 { grid-template-columns: 1fr 1fr; } }
+
     .card {
-      background: color-mix(in srgb, var(--bg-elevated) 92%, white);
+      position: relative;
+      background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
       border: 1px solid var(--line);
       box-shadow: var(--shadow);
-      border-radius: 1rem; padding: 1.25rem;
+      border-radius: var(--radius); padding: 1.35rem;
+      transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
     }
-    .card .kicker { font-size: 0.75rem; letter-spacing: 0.16em; }
-    .muted { color: var(--muted); font-size: 0.875rem; line-height: 1.5; }
-    pre {
-      overflow-x: auto; border-radius: 0.75rem; background: #1a2420; color: #e8efe9;
-      padding: 0.85rem 1rem; font-size: 0.875rem; margin: 1.5rem 0 0.75rem;
+    .card:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+    .card h3 { margin: 0.7rem 0 0; font-size: 1.02rem; font-weight: 600; letter-spacing: -0.01em; }
+    .step {
+      display: grid; place-items: center; width: 1.85rem; height: 1.85rem; border-radius: 0.55rem;
+      background: var(--accent-soft); color: var(--accent-ink);
+      font-size: 0.8rem; font-weight: 600; font-variant-numeric: tabular-nums;
     }
-    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em; }
-    p code, li code, td code { background: rgba(23,33,27,0.06); padding: 0.12rem 0.35rem; border-radius: 0.3rem; }
-    ul.plain { margin: 1.5rem 0 0; padding: 0; list-style: none; color: var(--muted); font-size: 0.875rem; }
-    ul.plain li { margin: 0.4rem 0; }
-    ol.use { margin: 1.5rem 0 0; padding-left: 1.25rem; color: var(--muted); }
-    ol.use li { margin: 0.6rem 0; }
-    table { width: 100%; max-width: 36rem; border-collapse: collapse; font-size: 0.875rem; margin-top: 2rem; text-align: left; }
-    th { color: var(--muted); font-weight: 500; padding: 0.5rem 1rem 0.5rem 0; border-bottom: 1px solid var(--line); }
-    td { padding: 0.75rem 1rem 0.75rem 0; border-bottom: 1px solid var(--line); vertical-align: top; }
-    .grid2 { display: grid; gap: 1rem; margin-top: 1.5rem; }
-    footer { border-top: 1px solid var(--line); padding: 2.5rem 0; font-size: 0.875rem; color: var(--muted); }
-    footer p { margin: 0.4rem 0; }
-    footer a { color: var(--accent); }
-    footer a:hover { text-decoration: underline; }
+    .muted { color: var(--muted); font-size: 0.9rem; line-height: 1.6; margin: 0.5rem 0 0; }
+
+    code { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.86em; }
+    p code, li code, td code, .muted code {
+      background: color-mix(in srgb, var(--ink) 7%, transparent);
+      padding: 0.14rem 0.36rem; border-radius: 0.35rem;
+    }
+
+    /* agent chips */
+    .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.5rem; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 0.45rem;
+      border: 1px solid var(--line); border-radius: 999px;
+      background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+      padding: 0.4rem 0.8rem; font-size: 0.82rem; color: var(--muted);
+    }
+    .chip .tick { color: var(--accent); display: grid; place-items: center; }
+    .chip .tick svg { width: 0.85rem; height: 0.85rem; }
+
+    ul.plain { margin: 1.5rem 0 0; padding: 0; list-style: none; color: var(--muted); font-size: 0.9rem; }
+    ul.plain li { display: flex; gap: 0.6rem; align-items: flex-start; margin: 0.6rem 0; line-height: 1.55; }
+    ul.plain .tick { color: var(--accent); flex: none; margin-top: 0.18rem; }
+    ul.plain .tick svg { width: 0.95rem; height: 0.95rem; display: block; }
+
+    ol.use { margin: 1.75rem 0 0; padding: 0; list-style: none; counter-reset: step; }
+    ol.use li {
+      counter-increment: step; position: relative; padding-left: 2.5rem;
+      margin: 0.9rem 0; color: var(--muted); line-height: 1.6;
+    }
+    ol.use li::before {
+      content: counter(step); position: absolute; left: 0; top: -0.1rem;
+      display: grid; place-items: center; width: 1.7rem; height: 1.7rem; border-radius: 0.5rem;
+      background: var(--accent-soft); color: var(--accent-ink); font-size: 0.78rem; font-weight: 600;
+    }
+
+    .table-wrap { overflow-x: auto; margin-top: 2rem; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.88rem; text-align: left; }
+    th { color: var(--muted); font-weight: 500; padding: 0.5rem 1rem 0.6rem 0; border-bottom: 1px solid var(--line); white-space: nowrap; }
+    td { padding: 0.8rem 1rem 0.8rem 0; border-bottom: 1px solid var(--line); vertical-align: top; color: var(--muted); }
+    td:first-child { color: var(--ink); }
+
+    /* ---------------------------------------------------------------- final cta */
+    .final {
+      margin: 4rem 0; padding: 2.75rem 1.75rem; text-align: center;
+      border: 1px solid var(--line); border-radius: 1.35rem;
+      background:
+        radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 62%),
+        color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+      box-shadow: var(--shadow);
+    }
+    .final h2 { margin-top: 0; }
+    .final .sub { margin-left: auto; margin-right: auto; }
+    .final .cta { justify-content: center; }
+
+    /* ---------------------------------------------------------------- footer */
+    footer { border-top: 1px solid var(--line); padding: 2.5rem 0 3rem; font-size: 0.875rem; color: var(--muted); }
+    .foot-grid { display: flex; flex-wrap: wrap; gap: 1.5rem; justify-content: space-between; align-items: flex-start; }
+    .foot-links { display: flex; flex-wrap: wrap; gap: 1.1rem; }
+    .foot-links a:hover { color: var(--ink); }
+    .foot-meta { display: flex; flex-direction: column; gap: 0.4rem; font-size: 0.8rem; }
+    .foot-bottom {
+      display: flex; flex-wrap: wrap; gap: 0.75rem; justify-content: space-between; align-items: center;
+      margin-top: 2rem; padding-top: 1.25rem; border-top: 1px solid var(--line); font-size: 0.8rem;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
+    }
   </style>
 </head>
 <body>
-  <header>
+  <header id="site-header">
     <div class="bar">
-      <a class="logo" href="#top">Planlog</a>
-      <nav>
+      <a class="logo" href="#top" aria-label="Planlog home">
+        <span class="logo-mark" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg>
+        </span>
+        Planlog
+      </a>
+      <nav aria-label="Primary">
         <a href="#how">How it works</a>
         <a href="#install">Install</a>
+        <a href="#agents">Agents</a>
         <a href="#use">Use</a>
       </nav>
       <div class="actions">
-        <a class="btn btn-ghost" href="__FRONTEND_URL__/login?next=/plans">Sign in</a>
+        <a class="icon-btn" href="__REPO_URL__" target="_blank" rel="noopener noreferrer" aria-label="Planlog on GitHub" title="View source on GitHub">
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        </a>
+        <a class="btn btn-ghost hide-xs" href="__FRONTEND_URL__/login?next=/plans">Sign in</a>
         <a class="btn btn-primary" href="__FRONTEND_URL__/login?mode=signup&amp;next=/plans">Get started</a>
       </div>
     </div>
   </header>
 
   <main id="top" class="wrap">
+    <!-- ------------------------------------------------------------ hero -->
     <section class="hero" style="border:0">
-      <p class="kicker">Planlog</p>
-      <h1>Plan → Approve → Done for humans and coding agents.</h1>
-      <p class="lede">Markdown plans are the source of truth. Agents read them before coding and write Done when they ship — not chat history.</p>
+      <p class="pill"><span class="dot" aria-hidden="true"></span> Plan → Approve → Done</p>
+      <h1>The plan is the source of truth — <span class="grad">not chat history.</span></h1>
+      <p class="lede">
+        Markdown plans your team and your coding agents share. Agents read the plan before they write
+        code and post <code>Done</code> when they ship. One command wires it into every agent on your machine.
+      </p>
+
+      <div class="terminal">
+        <div class="terminal-bar">
+          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="terminal-title">your-repo — bash</span>
+          <button class="copy" type="button" data-copy="curl -fsSL __INSTALL_URL__ | bash" aria-label="Copy install command">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span class="label">Copy</span>
+          </button>
+        </div>
+        <pre><code><span class="term-prompt">$</span>curl <span class="term-flag">-fsSL</span> <span class="term-url">__INSTALL_URL__</span> | bash</code></pre>
+      </div>
+
       <div class="cta">
-        <a class="btn btn-primary" href="__FRONTEND_URL__/login?mode=signup&amp;next=/plans">Create account</a>
-        <a class="btn btn-outline" href="#install">Copy install command</a>
+        <a class="btn btn-primary btn-lg" href="__FRONTEND_URL__/login?mode=signup&amp;next=/plans">Create free account</a>
+        <a class="btn btn-outline btn-lg" href="__REPO_URL__" target="_blank" rel="noopener noreferrer">
+          <svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+          Star on GitHub
+        </a>
+        <span class="cta-note">Free to start · No card required</span>
       </div>
     </section>
 
+    <!-- ------------------------------------------------------------ how -->
     <section id="how">
-      <h2>How it works</h2>
-      <p class="sub">One loop for the team and the agent. The plan stays in Planlog.</p>
-      <ol class="grid3" style="list-style:none; padding:0">
+      <p class="eyebrow">How it works</p>
+      <h2>One loop for the team and the agent</h2>
+      <p class="sub">The plan lives in Planlog. Everything else — review, handoff, history — hangs off it.</p>
+      <ol class="grid3" style="list-style:none; padding:0; margin-top:2.25rem">
         <li class="card">
-          <p class="kicker">Plan</p>
-          <p class="muted">Write intent, scope, and acceptance criteria in markdown. Project is required.</p>
+          <span class="step">1</span>
+          <h3>Plan</h3>
+          <p class="muted">Write intent, scope, and acceptance criteria in markdown. A project is required, so nothing floats free.</p>
         </li>
         <li class="card">
-          <p class="kicker">Approve</p>
-          <p class="muted">Reviewers suggest changes or approve. Agents update only while the plan is a draft.</p>
+          <span class="step">2</span>
+          <h3>Approve</h3>
+          <p class="muted">Reviewers suggest changes or approve. Agents can only edit while the plan is still a draft.</p>
         </li>
         <li class="card">
-          <p class="kicker">Done</p>
-          <p class="muted">When shipped, post_done with summary and links. That record is permanent.</p>
+          <span class="step">3</span>
+          <h3>Done</h3>
+          <p class="muted">On ship, the agent calls <code>post_done</code> with a summary and links. That record is permanent.</p>
         </li>
       </ol>
     </section>
 
+    <!-- ------------------------------------------------------------ install -->
     <section id="install">
-      <h2>Install in any repo</h2>
-      <p class="sub">One command. No Planlog clone. Works with Cursor, Claude Code, Copilot, Gemini — any agent that reads a markdown instruction file.</p>
-      <pre><code id="install-cmd">curl -fsSL __INSTALL_URL__ | bash</code></pre>
-      <button class="btn btn-outline" type="button" id="copy-btn">Copy install command</button>
+      <p class="eyebrow">Install</p>
+      <h2>One command, every agent</h2>
+      <p class="sub">
+        No Planlog clone. The installer asks where to install and which agents to wire up,
+        then writes the right config file for each one.
+      </p>
+
+      <div class="terminal">
+        <div class="terminal-bar">
+          <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
+          <span class="terminal-title">planlog install</span>
+          <button class="copy" type="button" data-copy="curl -fsSL __INSTALL_URL__ | bash" aria-label="Copy install command">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span class="label">Copy</span>
+          </button>
+        </div>
+        <pre><code><span class="term-prompt">$</span>curl <span class="term-flag">-fsSL</span> <span class="term-url">__INSTALL_URL__</span> | bash
+
+<span class="term-dim">Where should Planlog be installed?</span>
+  <span class="term-sel">1)</span> This project only — ~/code/checkout   <span class="term-dim">[default]</span>
+  <span class="term-sel">2)</span> Globally — every project on this laptop
+<span class="term-prompt">›</span><span class="term-sel">2</span>
+
+<span class="term-dim">Which coding agents should Planlog be wired into?</span>
+  <span class="term-sel">1)</span> [<span class="term-ok">x</span>] Cursor          <span class="term-dim">(detected)</span>
+  <span class="term-sel">2)</span> [<span class="term-ok">x</span>] Claude Code     <span class="term-dim">(detected)</span>
+  <span class="term-sel">3)</span> [ ] Codex CLI
+  <span class="term-sel">4)</span> [ ] Gemini CLI
+  <span class="term-sel">5)</span> [ ] GitHub Copilot / VS Code
+  <span class="term-sel">6)</span> [ ] Windsurf
+<span class="term-prompt">›</span><span class="term-sel">1,2,3</span><span class="caret" aria-hidden="true"></span>
+
+<span class="term-ok">✓</span> ~/.cursor/mcp.json      <span class="term-dim">planlog MCP merged</span>
+<span class="term-ok">✓</span> ~/.claude.json          <span class="term-dim">planlog MCP merged</span>
+<span class="term-ok">✓</span> ~/.codex/config.toml    <span class="term-dim">planlog MCP block written</span>
+<span class="term-ok">✓</span> ~/.claude/CLAUDE.md     <span class="term-dim">instructions grafted</span></code></pre>
+      </div>
+
       <ul class="plain">
-        <li>Grafts Planlog instructions into <code>AGENTS.md</code> / <code>CLAUDE.md</code></li>
-        <li>Wires MCP to <code>__MCP_URL__</code> (OAuth, same login)</li>
-        <li>Installs a Cursor skill so agents <code>get_plan</code> before work and <code>post_done</code> when shipped</li>
+        <li>
+          <span class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg></span>
+          <span>Grafts Planlog instructions into <code>AGENTS.md</code>, <code>CLAUDE.md</code>, <code>GEMINI.md</code> — whichever your agents read</span>
+        </li>
+        <li>
+          <span class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg></span>
+          <span>Wires MCP to <code>__MCP_URL__</code> over OAuth — the same login you already use</span>
+        </li>
+        <li>
+          <span class="tick" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg></span>
+          <span>Safe to re-run — the <code>planlog</code> block is replaced, and your other MCP servers are left alone</span>
+        </li>
       </ul>
-      <p class="muted" style="margin-top:1rem">Paste this in your repo, reload MCP, then Allow access.</p>
+
+      <p class="muted" style="margin-top:1.5rem">
+        Scripting it? Skip the prompts with
+        <code>| bash -s -- --global --agent claude --agent cursor</code>, or <code>--yes</code> to accept auto-detection.
+      </p>
     </section>
 
+    <!-- ------------------------------------------------------------ agents -->
+    <section id="agents">
+      <p class="eyebrow">Agents</p>
+      <h2>Works with what you already run</h2>
+      <p class="sub">Every agent gets its own native config — not a lowest-common-denominator hack.</p>
+      <div class="chips">
+        <span class="chip"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg></span> Cursor</span>
+        <span class="chip"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg></span> Claude Code</span>
+        <span class="chip"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg></span> Codex CLI</span>
+        <span class="chip"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg></span> Gemini CLI</span>
+        <span class="chip"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg></span> GitHub Copilot</span>
+        <span class="chip"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg></span> Windsurf</span>
+        <span class="chip"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg></span> Anything reading AGENTS.md</span>
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------------ use -->
     <section id="use">
-      <h2>Use</h2>
+      <p class="eyebrow">Use</p>
+      <h2>From signup to shipped</h2>
       <ol class="use">
-        <li>Sign up → create an organization → write a markdown plan</li>
-        <li>Run install in the repo; paste the <code>plan_id</code> in the agent</li>
-        <li>Agent: <code>get_plan</code> → code → <code>post_done</code> (summary + links)</li>
-        <li>Teammates: approve, suggest, or Notify on Done</li>
+        <li>Sign up, create an organization, and write a markdown plan.</li>
+        <li>Run the install in your repo, then paste the <code>plan_id</code> into your agent.</li>
+        <li>The agent runs <code>get_plan</code> → writes code → <code>post_done</code> with a summary and links.</li>
+        <li>Teammates approve, suggest changes, or get notified on Done.</li>
       </ol>
-      <table>
-        <thead><tr><th>Do</th><th>Don't</th></tr></thead>
-        <tbody>
-          <tr><td>Read the plan before editing code</td><td>Skip <code>get_plan</code> when a plan_id is known</td></tr>
-          <tr><td><code>post_done</code> with summary + links when finished</td><td>Use <code>add_suggestion</code> to record shipped work</td></tr>
-          <tr><td>Notify teammates for the next implementer</td><td>Leave shipped work only in chat</td></tr>
-        </tbody>
-      </table>
+
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Do</th><th>Don't</th></tr></thead>
+          <tbody>
+            <tr><td>Read the plan before editing code</td><td>Skip <code>get_plan</code> when a plan_id is known</td></tr>
+            <tr><td><code>post_done</code> with summary + links when finished</td><td>Use <code>add_suggestion</code> to record shipped work</td></tr>
+            <tr><td>Notify teammates for the next implementer</td><td>Leave shipped work only in chat</td></tr>
+          </tbody>
+        </table>
+      </div>
     </section>
 
+    <!-- ------------------------------------------------------------ why -->
     <section>
-      <h2>Why it sticks</h2>
+      <p class="eyebrow">Why it sticks</p>
+      <h2>Built for handoff, not for scrollback</h2>
       <ul class="grid2" style="list-style:none; padding:0">
-        <li class="card"><p><strong>Done is history</strong></p><p class="muted">Permanent record — not a Slack thread that disappears.</p></li>
-        <li class="card"><p><strong>Share links</strong></p><p class="muted">Team or Anyone links for people inside and outside the org.</p></li>
-        <li class="card"><p><strong>Sent to me</strong></p><p class="muted">Handoffs land in a filter the next person actually opens.</p></li>
-        <li class="card"><p><strong>Any coding agent</strong></p><p class="muted">Cursor, Claude Code, Copilot, Gemini — same markdown contract.</p></li>
+        <li class="card"><h3>Done is history</h3><p class="muted">A permanent record of what shipped — not a Slack thread that ages out.</p></li>
+        <li class="card"><h3>Share links</h3><p class="muted">Team and Anyone links, for people inside and outside the org.</p></li>
+        <li class="card"><h3>Sent to me</h3><p class="muted">Handoffs land in a filter the next person actually opens.</p></li>
+        <li class="card"><h3>Any coding agent</h3><p class="muted">Six agents wired natively, and one markdown contract for the rest.</p></li>
       </ul>
     </section>
+
+    <!-- ------------------------------------------------------------ final cta -->
+    <div class="final">
+      <h2>Give your agents a plan to follow</h2>
+      <p class="sub">Set it up in under a minute. Your next agent session starts from the plan, not from scratch.</p>
+      <div class="cta">
+        <a class="btn btn-primary btn-lg" href="__FRONTEND_URL__/login?mode=signup&amp;next=/plans">Create free account</a>
+        <a class="btn btn-outline btn-lg" href="#install">See the install</a>
+      </div>
+    </div>
   </main>
 
   <footer>
     <div class="wrap">
-      <p>MCP: <code>__MCP_URL__</code></p>
-      <p>Install: <code>curl -fsSL __INSTALL_URL__ | bash</code></p>
-      <p>
-        <a href="https://github.com/depak7/ohship">GitHub</a>
-        ·
-        <a href="__FRONTEND_URL__/login?next=/plans">Sign in</a>
-      </p>
+      <div class="foot-grid">
+        <div>
+          <a class="logo" href="#top">
+            <span class="logo-mark" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg>
+            </span>
+            Planlog
+          </a>
+          <div class="foot-meta" style="margin-top:0.9rem">
+            <span>MCP endpoint <code>__MCP_URL__</code></span>
+            <span>Install <code>curl -fsSL __INSTALL_URL__ | bash</code></span>
+          </div>
+        </div>
+        <div class="foot-links">
+          <a href="#how">How it works</a>
+          <a href="#install">Install</a>
+          <a href="#agents">Agents</a>
+          <a href="#use">Use</a>
+          <a href="__FRONTEND_URL__/login?next=/plans">Sign in</a>
+        </div>
+      </div>
+      <div class="foot-bottom">
+        <span>Plan → Approve → Done.</span>
+        <a class="icon-btn" href="__REPO_URL__" target="_blank" rel="noopener noreferrer" aria-label="Planlog on GitHub">
+          <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
+        </a>
+      </div>
     </div>
   </footer>
+
   <script>
-    document.getElementById("copy-btn").addEventListener("click", async function () {
-      var cmd = document.getElementById("install-cmd").textContent;
-      await navigator.clipboard.writeText(cmd);
-      this.textContent = "Copied";
-      var btn = this;
-      setTimeout(function () { btn.textContent = "Copy install command"; }, 2000);
-    });
+    (function () {
+      var COPY_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>';
+      var DONE_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 12.5l5.5 5.5L20 6"/></svg>';
+
+      function render(btn, icon, label) {
+        btn.innerHTML = icon + '<span class="label">' + label + '</span>';
+      }
+
+      function fallbackCopy(text) {
+        var ta = document.createElement("textarea");
+        ta.value = text;
+        ta.setAttribute("readonly", "");
+        ta.style.position = "fixed";
+        ta.style.opacity = "0";
+        document.body.appendChild(ta);
+        ta.select();
+        try { document.execCommand("copy"); } finally { document.body.removeChild(ta); }
+      }
+
+      document.querySelectorAll(".copy").forEach(function (btn) {
+        btn.addEventListener("click", function () {
+          var text = btn.getAttribute("data-copy");
+          var done = function () {
+            btn.classList.add("done");
+            render(btn, DONE_ICON, "Copied");
+            setTimeout(function () {
+              btn.classList.remove("done");
+              render(btn, COPY_ICON, "Copy");
+            }, 2000);
+          };
+          if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(done, function () { fallbackCopy(text); done(); });
+          } else {
+            fallbackCopy(text);
+            done();
+          }
+        });
+      });
+
+      var header = document.getElementById("site-header");
+      var onScroll = function () {
+        header.classList.toggle("scrolled", window.scrollY > 8);
+      };
+      window.addEventListener("scroll", onScroll, { passive: true });
+      onScroll();
+    })();
   </script>
 </body>
 </html>

@@ -6,6 +6,7 @@ from fastapi import APIRouter
 from fastapi.responses import HTMLResponse
 
 from planlog.config import settings
+from planlog.constants import PUBLIC_REPO_URL
 
 router = APIRouter(tags=["site"])
 
@@ -15,7 +16,12 @@ def landing_page() -> HTMLResponse:
     html = files("planlog.agent.templates").joinpath("landing.html").read_text(encoding="utf-8")
     api = settings.api_url.rstrip("/")
     install = settings.install_url.rstrip("/")
-    html = html.replace("__FRONTEND_URL__", settings.frontend_url.rstrip("/"))
-    html = html.replace("__INSTALL_URL__", install)
-    html = html.replace("__MCP_URL__", f"{api}/mcp")
+    for placeholder, value in (
+        ("__FRONTEND_URL__", settings.frontend_url.rstrip("/")),
+        ("__INSTALL_URL__", install),
+        ("__MCP_URL__", f"{api}/mcp"),
+        ("__REPO_URL__", PUBLIC_REPO_URL),
+        ("__SITE_URL__", install.removesuffix("/install") or api),
+    ):
+        html = html.replace(placeholder, value)
     return HTMLResponse(html)
