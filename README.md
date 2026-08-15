@@ -53,11 +53,32 @@ Override the API (e.g. self-hosted):
 PLANLOG_API_URL=https://planlog.depak.dev curl -fsSL https://planlog.depak.dev/install | bash
 ```
 
-Auto-detects your coding agent (Cursor, Claude Code, Copilot, etc.):
+The installer is **interactive**. It asks two questions, then writes only what you picked:
 
-- Grafts Planlog instructions into `AGENTS.md` / `CLAUDE.md` / other agent MD files
-- Wires MCP (`.cursor/mcp.json`, `.mcp.json` for Claude Code)
-- Installs Cursor skill at `~/.cursor/skills/planlog/`
+1. **Where** — this project only, or globally (every project on this laptop).
+2. **Which agents** — detected ones are pre-selected; press Enter to accept, or pick numbers.
+
+| Agent | Instructions | MCP config (project) | MCP config (global) |
+| --- | --- | --- | --- |
+| Cursor | `.cursor/rules/planlog.mdc` | `.cursor/mcp.json` | `~/.cursor/mcp.json` + `~/.cursor/skills/planlog/` |
+| Claude Code | `CLAUDE.md` | `.mcp.json` | `claude mcp add --scope user` (falls back to `~/.claude.json`), `~/.claude/CLAUDE.md` |
+| Codex CLI | `AGENTS.md` | — (Codex is user-scoped) | `~/.codex/config.toml`, `~/.codex/AGENTS.md` |
+| Gemini CLI | `GEMINI.md` | `.gemini/settings.json` | `~/.gemini/settings.json`, `~/.gemini/GEMINI.md` |
+| Copilot / VS Code | `.github/copilot-instructions.md` | `.vscode/mcp.json` | VS Code user `mcp.json` |
+| Windsurf | `.windsurf/rules/planlog.md` | — (Windsurf is user-scoped) | `~/.codeium/windsurf/mcp_config.json` |
+| Any other | `AGENTS.md` | — | — |
+
+Re-running is safe: the `planlog:begin … planlog:end` block is **replaced**, not duplicated, and
+existing MCP servers in each config are preserved.
+
+Skip the prompts (CI, dotfiles, no terminal):
+
+```bash
+curl -fsSL https://planlog.depak.dev/install | bash -s -- --global --agent claude --agent cursor
+curl -fsSL https://planlog.depak.dev/install | bash -s -- --yes   # use auto-detected agents
+```
+
+Without a terminal (`/dev/tty` unavailable) the installer skips the picker and uses auto-detection.
 
 From a cloned Planlog repo (local dev): `./scripts/install-agent.sh --repo /path/to/your/app`
 

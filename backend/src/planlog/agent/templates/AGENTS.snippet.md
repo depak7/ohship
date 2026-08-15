@@ -34,6 +34,6 @@ Use Planlog when work is tied to a **plan_id** or a new feature slice in an org 
 | Skip `get_plan` when a plan_id is known | Avoid coding against stale scope |
 | Leave shipped work only in chat or local notes | Update the plan in Planlog via MCP |
 
-MCP server: `{api_url}/mcp` (OAuth). Re-run installer: `curl -fsSL {install_url} | bash`
+MCP server: `{api_url}/mcp` (OAuth). Re-run installer (picks agents + scope): `curl -fsSL {install_url} | bash`
 
 <!-- planlog:end -->

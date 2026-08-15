@@ -42,6 +42,8 @@ Use Planlog when work is tied to a **plan_id** or a new feature slice in an org 
 | Skip `get_plan` when a plan_id is known | Avoid coding against stale scope |
 | Leave shipped work only in chat or local notes | Update the plan in Planlog via MCP |
 
-MCP setup (any project): `curl -fsSL https://planlog.depak.dev/install | bash`
+MCP setup (any project): `curl -fsSL https://planlog.depak.dev/install | bash` — asks which agents
+to wire up and whether to install per-project or laptop-wide. Non-interactive:
+`… | bash -s -- --yes` (auto-detect) or `… | bash -s -- --global --agent claude`.
 
 <!-- planlog:end -->
