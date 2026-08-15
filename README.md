@@ -139,6 +139,22 @@ Endpoints:
 - AS metadata: `/.well-known/oauth-authorization-server`
 - RS metadata: `/.well-known/oauth-protected-resource/mcp`
 
+### Deploying: run exactly one web worker
+
+**The `--workers 1` in `backend/Procfile` is load-bearing.** MCP Streamable HTTP keeps live
+sessions in a per-process dict, so with two workers the router sends `initialize` to one
+process and `tools/list` to another. The second answers `Session not found` and the client
+reports **"Reconnected to planlog, but fetching tools failed: Not connected"**.
+
+It's easy to reintroduce: Heroku's Python buildpack sets `WEB_CONCURRENCY` (2 on a Basic
+dyno) and uvicorn silently honours it unless `--workers` is passed. The tell in the logs is a
+`Created new transport with session ID: X` followed by `Rejected request with unknown or
+expired session ID: X` **with no teardown line in between** — the session isn't gone, it's
+alive in the other process. The app logs a warning at startup when `WEB_CONCURRENCY > 1`.
+
+To scale past one worker, switch MCP to `stateless_http=True` first (Planlog's tools are all
+request/response, so nothing depends on server-initiated streaming).
+
 ### MCP stdio + API key (optional)
 
 See [`.cursor/mcp.json.example`](.cursor/mcp.json.example). Needs `PLANLOG_API_KEY` and `PLANLOG_ORG_ID`. Bootstrap user: `cd backend && uv run planlog-seed`.

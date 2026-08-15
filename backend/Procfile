@@ -1,2 +1,8 @@
-web: uvicorn planlog.api.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'
+# --workers 1 is load-bearing. MCP Streamable HTTP keeps its sessions in a per-process dict
+# (StreamableHTTPSessionManager._server_instances), so with more than one worker the router
+# sends `initialize` to one process and `tools/list` to another, which answers
+# "Session not found" and the client reports "Not connected".
+# Heroku's Python buildpack sets WEB_CONCURRENCY (2 on a Basic dyno) and uvicorn honours it
+# unless --workers is passed explicitly. To scale out, switch MCP to stateless_http first.
+web: uvicorn planlog.api.main:app --host 0.0.0.0 --port $PORT --workers 1 --proxy-headers --forwarded-allow-ips='*'
 release: python -m alembic upgrade head

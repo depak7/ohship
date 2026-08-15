@@ -1,3 +1,5 @@
+import logging
+import os
 from contextlib import asynccontextmanager
 from urllib.parse import urlparse
 
@@ -18,12 +20,37 @@ from planlog.mcp.server import create_mcp_server, mcp_transport_security
 from planlog.oauth.provider import MCP_SCOPE, oauth_provider
 from planlog.oauth.token_verifier import PlanlogTokenVerifier
 
+logger = logging.getLogger(__name__)
+
 # MCP resource server (Streamable HTTP + OAuth token verification)
 mcp_http = create_mcp_server(enable_oauth=True)
 
 
+def _warn_if_multi_worker() -> None:
+    """MCP sessions are per-process, so more than one worker silently breaks /mcp.
+
+    StreamableHTTPSessionManager holds live sessions in an in-process dict. Spread requests
+    across workers and `initialize` lands on one while `tools/list` lands on another, which
+    answers "Session not found" — with no teardown log, because the session is alive in the
+    other process. Heroku's buildpack sets WEB_CONCURRENCY and uvicorn honours it unless
+    --workers is passed, so this is easy to reintroduce by deleting one Procfile flag.
+    """
+    try:
+        concurrency = int(os.environ.get("WEB_CONCURRENCY", "1"))
+    except ValueError:
+        return
+    if concurrency > 1:
+        logger.warning(
+            "WEB_CONCURRENCY=%s but MCP Streamable HTTP keeps sessions in-process. "
+            "Unless the server runs with --workers 1, /mcp will intermittently return "
+            "'Session not found' and clients will report 'Not connected'.",
+            concurrency,
+        )
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    _warn_if_multi_worker()
     async with mcp_http.session_manager.run():
         yield
 
