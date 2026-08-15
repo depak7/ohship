@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
-import { Button } from "@/components/ui";
 import { Member, PlanDetail, UserBrief } from "@/lib/api";
 
 export function ReviewersSidebar({
@@ -11,16 +10,12 @@ export function ReviewersSidebar({
   meId,
   disabled,
   onAdd,
-  onCopyAgentPrompt,
-  copied,
 }: {
   plan: PlanDetail;
   members: Member[];
   meId: string | null;
   disabled?: boolean;
   onAdd: (memberId: string) => Promise<void>;
-  onCopyAgentPrompt: () => void;
-  copied: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [addingId, setAddingId] = useState<string | null>(null);
@@ -128,14 +123,6 @@ export function ReviewersSidebar({
         </ul>
       )}
 
-      <div className="mt-4 border-t border-[var(--line)] pt-3">
-        <Button variant="outline" className="w-full text-xs" onClick={onCopyAgentPrompt}>
-          {copied ? "Copied prompt" : "Copy agent prompt"}
-        </Button>
-        <p className="mt-2 text-xs text-[var(--muted)]">
-          Copies a prompt for review or ship workflow with Planlog MCP.
-        </p>
-      </div>
     </aside>
   );
 }

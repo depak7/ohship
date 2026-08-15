@@ -8,6 +8,7 @@ import { Button, Card, Label, Textarea } from "@/components/ui";
 import { DonePanel, PlanStatusBadge } from "@/components/plan-panels";
 import { Markdown } from "@/components/markdown";
 import { NotifySidebar } from "@/components/notify-sidebar";
+import { OpenInAgent } from "@/components/open-in-agent";
 import { ReviewersSidebar } from "@/components/reviewers-sidebar";
 import { ensureAnyoneLink, ShareSidebar } from "@/components/share-sidebar";
 import { api, DoneLink, Member, PlanDetail } from "@/lib/api";
@@ -26,7 +27,6 @@ export default function PlanDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [comment, setComment] = useState("");
   const [showDoneForm, setShowDoneForm] = useState(false);
-  const [copied, setCopied] = useState(false);
   const [viewMode, setViewMode] = useState<"rendered" | "source">("rendered");
   const [doneSummary, setDoneSummary] = useState("");
   const [doneNotes, setDoneNotes] = useState("");
@@ -104,15 +104,6 @@ export default function PlanDetailPage() {
         <p className="text-[var(--danger)]">{error || "Plan not found"}</p>
       </AppShell>
     );
-  }
-
-  async function copyAgentPrompt() {
-    if (!plan) return;
-    const prompt = plan.agent_prompt;
-    if (!prompt) return;
-    await navigator.clipboard.writeText(prompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   }
 
   const canShip = plan.status !== "done";
@@ -234,8 +225,6 @@ export default function PlanDetailPage() {
             setActionLoading(false);
           }
         }}
-        onCopyAgentPrompt={copyAgentPrompt}
-        copied={copied}
       />
       <NotifySidebar
         plan={plan}
@@ -265,7 +254,12 @@ export default function PlanDetailPage() {
 
       {plan.status === "done" && plan.done ? (
         <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_16rem]">
-          <DonePanel plan={plan} />
+          <div>
+            <div className="mb-3 flex justify-end">
+              <OpenInAgent prompt={plan.agent_prompt} variant="ghost" align="right" />
+            </div>
+            <DonePanel plan={plan} />
+          </div>
           {sidebars}
         </div>
       ) : (
@@ -375,6 +369,7 @@ export default function PlanDetailPage() {
                       Claim
                     </Button>
                   )}
+                  <OpenInAgent prompt={plan.agent_prompt} />
                 </div>
 
                 {plan.status === "in_review" && (

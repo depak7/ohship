@@ -33,6 +33,8 @@ export function Button({
   ...props
 }: React.ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: "default" | "outline" | "ghost" | "destructive";
+  // React 19 passes `ref` through as a regular prop — it just isn't in ButtonHTMLAttributes.
+  ref?: React.Ref<HTMLButtonElement>;
 }) {
   const variants = {
     default: "bg-[var(--ink)] text-[var(--bg)] hover:bg-[#243029]",

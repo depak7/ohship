@@ -3,24 +3,25 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Planlog — Plan → Approve → Done</title>
-  <meta name="description" content="Markdown plans humans and coding agents share. Agents read the plan before coding and post Done when they ship. One command wires MCP into Cursor, Claude Code, Codex, Gemini, Copilot and Windsurf." />
-  <meta name="theme-color" content="#f3efe6" media="(prefers-color-scheme: light)" />
-  <meta name="theme-color" content="#0e1512" media="(prefers-color-scheme: dark)" />
+  <title>Planlog — GitHub for your markdown plans</title>
+  <meta name="description" content="Write the plan in markdown. Get it reviewed, approved, and shipped — and leave a Done record your next agent session can read back. One command wires it into Cursor, Claude Code, Codex, Gemini, Copilot and Windsurf." />
+  <meta name="theme-color" content="#f3efe6" />
+  <meta name="color-scheme" content="light" />
 
   <meta property="og:type" content="website" />
-  <meta property="og:title" content="Planlog — Plan → Approve → Done" />
-  <meta property="og:description" content="Markdown plans humans and coding agents share. One command wires MCP into every agent on your machine." />
+  <meta property="og:title" content="Planlog — GitHub for your markdown plans" />
+  <meta property="og:description" content="Plan → Approve → Done. Pull requests, but for the plan — so your coding agents start from approved intent instead of chat history." />
   <meta property="og:url" content="__SITE_URL__" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="Planlog — Plan → Approve → Done" />
-  <meta name="twitter:description" content="Markdown plans humans and coding agents share." />
+  <meta name="twitter:title" content="Planlog — GitHub for your markdown plans" />
+  <meta name="twitter:description" content="Pull requests, but for the plan. Your agent forgets — the plan doesn't." />
 
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='8' fill='%230f7a5f'/%3E%3Cpath d='M9 16.5l4.5 4.5L23 11.5' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round' fill='none'/%3E%3C/svg%3E" />
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
   <style>
+    /* Palette mirrors the app's globals.css so planlog.depak.dev and app pages match. */
     :root {
       --bg: #f3efe6;
       --bg-elevated: #faf7f0;
@@ -30,8 +31,8 @@
       --accent: #0f7a5f;
       --accent-ink: #0b5a46;
       --accent-soft: #d8efe6;
-      --term-bg: #121a16;
-      --term-bar: #1b2621;
+      --term-bg: #1a2420;      /* same as .prose-md pre in the app */
+      --term-bar: #223029;
       --term-ink: #e8efe9;
       --term-muted: #8ea296;
       --shadow: 0 18px 50px rgba(23, 33, 27, 0.08);
@@ -39,35 +40,18 @@
       --radius: 1rem;
     }
 
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #0e1512;
-        --bg-elevated: #16201b;
-        --ink: #e9efe9;
-        --muted: #9aab9f;
-        --line: #26332c;
-        --accent: #4ac59c;
-        --accent-ink: #7fdcbb;
-        --accent-soft: #16352b;
-        --term-bg: #060b09;
-        --term-bar: #101815;
-        --shadow: 0 18px 50px rgba(0, 0, 0, 0.4);
-        --shadow-lg: 0 28px 70px rgba(0, 0, 0, 0.55);
-      }
-    }
-
     * { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
+    html { scroll-behavior: smooth; color-scheme: light; }
     body {
       margin: 0;
       min-height: 100vh;
       color: var(--ink);
       font-family: Sora, system-ui, -apple-system, sans-serif;
       -webkit-font-smoothing: antialiased;
+      /* Identical to the app's body background. */
       background:
-        radial-gradient(circle at 12% -5%, color-mix(in srgb, var(--accent) 14%, transparent), transparent 38%),
-        radial-gradient(circle at 88% 8%, color-mix(in srgb, var(--accent) 8%, transparent), transparent 34%),
-        var(--bg);
+        radial-gradient(circle at top left, rgba(15, 122, 95, 0.08), transparent 32%),
+        linear-gradient(180deg, #f7f3ea 0%, var(--bg) 40%, #ebe4d7 100%);
       background-attachment: fixed;
     }
     a { color: inherit; text-decoration: none; }
@@ -77,7 +61,7 @@
     header {
       position: sticky; top: 0; z-index: 30;
       border-bottom: 1px solid transparent;
-      background: color-mix(in srgb, var(--bg) 80%, transparent);
+      background: color-mix(in srgb, var(--bg) 88%, white);
       backdrop-filter: blur(12px) saturate(1.4);
       transition: border-color 0.2s ease, box-shadow 0.2s ease;
     }
@@ -85,12 +69,8 @@
     .bar, .wrap { max-width: 66rem; margin: 0 auto; padding: 0 1.25rem; }
     .bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: 0.7rem; padding-bottom: 0.7rem; }
 
-    .logo { display: inline-flex; align-items: center; gap: 0.55rem; font-size: 1.05rem; font-weight: 600; letter-spacing: -0.02em; }
-    .logo-mark {
-      display: grid; place-items: center; width: 1.65rem; height: 1.65rem;
-      border-radius: 0.5rem; background: var(--accent); color: #fff; flex: none;
-    }
-    .logo-mark svg { width: 1rem; height: 1rem; }
+    /* Wordmark only — same treatment as the app header (text-lg font-semibold tracking-tight). */
+    .logo { font-size: 1.125rem; font-weight: 600; letter-spacing: -0.025em; color: var(--ink); }
 
     nav { display: none; gap: 1.4rem; font-size: 0.875rem; color: var(--muted); }
     @media (min-width: 800px) { nav { display: flex; } }
@@ -213,7 +193,7 @@
 
     .card {
       position: relative;
-      background: color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+      background: color-mix(in srgb, var(--bg-elevated) 92%, white);
       border: 1px solid var(--line);
       box-shadow: var(--shadow);
       border-radius: var(--radius); padding: 1.35rem;
@@ -230,16 +210,34 @@
 
     code { font-family: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.86em; }
     p code, li code, td code, .muted code {
-      background: color-mix(in srgb, var(--ink) 7%, transparent);
+      background: rgba(23, 33, 27, 0.06);
       padding: 0.14rem 0.36rem; border-radius: 0.35rem;
     }
+
+    /* before / after */
+    .compare { display: grid; gap: 1rem; margin-top: 2.25rem; }
+    @media (min-width: 720px) { .compare { grid-template-columns: 1fr 1fr; } }
+    .compare-head { margin: 0 0 0.9rem; font-size: 0.95rem; font-weight: 600; letter-spacing: -0.01em; }
+    .compare ul { margin: 0; padding: 0; list-style: none; }
+    .compare li {
+      position: relative; padding-left: 1.5rem; margin: 0.6rem 0;
+      color: var(--muted); font-size: 0.9rem; line-height: 1.6;
+    }
+    .compare li::before { position: absolute; left: 0; top: -0.03em; font-weight: 600; }
+    .compare-bad { border-color: color-mix(in srgb, var(--ink) 14%, var(--line)); }
+    .compare-bad .compare-head { color: var(--muted); }
+    .compare-bad li::before { content: "×"; color: color-mix(in srgb, var(--ink) 45%, transparent); font-size: 1.05rem; line-height: 1.35; }
+    .compare-good { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+    .compare-good .compare-head { color: var(--accent-ink); }
+    .compare-good li::before { content: "✓"; color: var(--accent); }
+    .compare-bad:hover, .compare-good:hover { transform: none; box-shadow: var(--shadow); }
 
     /* agent chips */
     .chips { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1.5rem; }
     .chip {
       display: inline-flex; align-items: center; gap: 0.45rem;
       border: 1px solid var(--line); border-radius: 999px;
-      background: color-mix(in srgb, var(--bg-elevated) 80%, transparent);
+      background: color-mix(in srgb, var(--bg-elevated) 92%, white);
       padding: 0.4rem 0.8rem; font-size: 0.82rem; color: var(--muted);
     }
     .chip .tick { color: var(--accent); display: grid; place-items: center; }
@@ -273,7 +271,7 @@
       border: 1px solid var(--line); border-radius: 1.35rem;
       background:
         radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 62%),
-        color-mix(in srgb, var(--bg-elevated) 92%, transparent);
+        color-mix(in srgb, var(--bg-elevated) 92%, white);
       box-shadow: var(--shadow);
     }
     .final h2 { margin-top: 0; }
@@ -300,13 +298,9 @@
 <body>
   <header id="site-header">
     <div class="bar">
-      <a class="logo" href="#top" aria-label="Planlog home">
-        <span class="logo-mark" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg>
-        </span>
-        Planlog
-      </a>
+      <a class="logo" href="#top">Planlog</a>
       <nav aria-label="Primary">
+        <a href="#why-plans">Why</a>
         <a href="#how">How it works</a>
         <a href="#install">Install</a>
         <a href="#agents">Agents</a>
@@ -326,10 +320,11 @@
     <!-- ------------------------------------------------------------ hero -->
     <section class="hero" style="border:0">
       <p class="pill"><span class="dot" aria-hidden="true"></span> Plan → Approve → Done</p>
-      <h1>The plan is the source of truth — <span class="grad">not chat history.</span></h1>
+      <h1>GitHub for your <span class="grad">markdown plans.</span></h1>
       <p class="lede">
-        Markdown plans your team and your coding agents share. Agents read the plan before they write
-        code and post <code>Done</code> when they ship. One command wires it into every agent on your machine.
+        Write the plan in markdown. Get it reviewed, approved, and shipped — and leave a
+        <code>Done</code> record your next agent session can read back. One command wires it into
+        every coding agent on your machine.
       </p>
 
       <div class="terminal">
@@ -350,25 +345,52 @@
           <svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
           Star on GitHub
         </a>
-        <span class="cta-note">Free to start · No card required</span>
+        <span class="cta-note">Free · Open source · MIT</span>
+      </div>
+    </section>
+
+    <!-- ------------------------------------------------------------ problem -->
+    <section id="why-plans">
+      <p class="eyebrow">The problem</p>
+      <h2>Same agent. Different session.</h2>
+      <p class="sub">Every fresh context window starts from zero. What it starts from is the whole game.</p>
+      <div class="compare">
+        <div class="card compare-bad">
+          <p class="compare-head">Without a plan</p>
+          <ul>
+            <li>You re-explain the goal from scratch.</li>
+            <li>The agent re-derives scope and guesses at the edges.</li>
+            <li>It ships something adjacent to what you meant.</li>
+            <li>The decision lives in a chat log nobody can find.</li>
+          </ul>
+        </div>
+        <div class="card compare-good">
+          <p class="compare-head">With Planlog</p>
+          <ul>
+            <li><code>get_plan(plan_id)</code> — intent, scope, acceptance criteria.</li>
+            <li>The agent codes against criteria a human already approved.</li>
+            <li><code>post_done</code> records what actually shipped, with links.</li>
+            <li>The next session starts where the last one ended.</li>
+          </ul>
+        </div>
       </div>
     </section>
 
     <!-- ------------------------------------------------------------ how -->
     <section id="how">
       <p class="eyebrow">How it works</p>
-      <h2>One loop for the team and the agent</h2>
-      <p class="sub">The plan lives in Planlog. Everything else — review, handoff, history — hangs off it.</p>
+      <h2>Pull requests, but for the plan.</h2>
+      <p class="sub">Draft → review → approved → Done. If you've shipped a PR, you already know this loop.</p>
       <ol class="grid3" style="list-style:none; padding:0; margin-top:2.25rem">
         <li class="card">
           <span class="step">1</span>
           <h3>Plan</h3>
-          <p class="muted">Write intent, scope, and acceptance criteria in markdown. A project is required, so nothing floats free.</p>
+          <p class="muted">Intent, scope, acceptance criteria. Markdown, not a ticket form.</p>
         </li>
         <li class="card">
           <span class="step">2</span>
           <h3>Approve</h3>
-          <p class="muted">Reviewers suggest changes or approve. Agents can only edit while the plan is still a draft.</p>
+          <p class="muted">Reviewers approve or request changes — before a line of code exists. Agents edit while the plan is a draft or has changes requested.</p>
         </li>
         <li class="card">
           <span class="step">3</span>
@@ -381,7 +403,7 @@
     <!-- ------------------------------------------------------------ install -->
     <section id="install">
       <p class="eyebrow">Install</p>
-      <h2>One command, every agent</h2>
+      <h2>One command. Every agent on your machine.</h2>
       <p class="sub">
         No Planlog clone. The installer asks where to install and which agents to wire up,
         then writes the right config file for each one.
@@ -458,7 +480,7 @@
     <!-- ------------------------------------------------------------ use -->
     <section id="use">
       <p class="eyebrow">Use</p>
-      <h2>From signup to shipped</h2>
+      <h2>From <code>plan_id</code> to shipped.</h2>
       <ol class="use">
         <li>Sign up, create an organization, and write a markdown plan.</li>
         <li>Run the install in your repo, then paste the <code>plan_id</code> into your agent.</li>
@@ -481,12 +503,14 @@
     <!-- ------------------------------------------------------------ why -->
     <section>
       <p class="eyebrow">Why it sticks</p>
-      <h2>Built for handoff, not for scrollback</h2>
+      <h2>Your agent forgets. The plan doesn't.</h2>
       <ul class="grid2" style="list-style:none; padding:0">
         <li class="card"><h3>Done is history</h3><p class="muted">A permanent record of what shipped — not a Slack thread that ages out.</p></li>
         <li class="card"><h3>Share links</h3><p class="muted">Team and Anyone links, for people inside and outside the org.</p></li>
         <li class="card"><h3>Sent to me</h3><p class="muted">Handoffs land in a filter the next person actually opens.</p></li>
         <li class="card"><h3>Any coding agent</h3><p class="muted">Six agents wired natively, and one markdown contract for the rest.</p></li>
+        <li class="card"><h3>One click into the agent</h3><p class="muted">Open a plan straight into Cursor or Claude Code — the prompt arrives pre-filled, nothing runs until you press Enter.</p></li>
+        <li class="card"><h3>Plans are documents</h3><p class="muted">Intent, scope, acceptance criteria — rendered markdown or raw source, your choice.</p></li>
       </ul>
     </section>
 
@@ -505,12 +529,7 @@
     <div class="wrap">
       <div class="foot-grid">
         <div>
-          <a class="logo" href="#top">
-            <span class="logo-mark" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M4 12.5l5.5 5.5L20 6"/></svg>
-            </span>
-            Planlog
-          </a>
+          <a class="logo" href="#top">Planlog</a>
           <div class="foot-meta" style="margin-top:0.9rem">
             <span>MCP endpoint <code>__MCP_URL__</code></span>
             <span>Install <code>curl -fsSL __INSTALL_URL__ | bash</code></span>

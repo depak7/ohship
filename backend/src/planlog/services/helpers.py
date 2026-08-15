@@ -38,10 +38,20 @@ def plan_web_url(plan: Plan) -> str:
     return f"{settings.frontend_url.rstrip('/')}/plans/{plan.id}"
 
 
+def _quoted_title(plan: Plan) -> str:
+    """Collapse whitespace and fence the title.
+
+    This prompt gets pasted into (or deep-linked at) someone else's coding agent, so a title
+    carrying its own newlines could read as instructions rather than as a field value.
+    Collapsing also keeps the prompt inside the deep-link length caps.
+    """
+    return f"`{' '.join(plan.title.split())}`"
+
+
 def agent_review_prompt(plan: Plan) -> str:
     return (
         f"Review this Planlog plan in your coding agent (Planlog MCP server).\n\n"
-        f"Title: {plan.title}\n"
+        f"Title: {_quoted_title(plan)}\n"
         f"Plan ID: {plan.id}\n"
         f"Web: {plan_web_url(plan)}\n\n"
         f"Use Planlog MCP tools:\n"
@@ -54,7 +64,7 @@ def agent_review_prompt(plan: Plan) -> str:
 def agent_ship_prompt(plan: Plan) -> str:
     return (
         f"Implement and ship this Planlog plan (Planlog MCP server).\n\n"
-        f"Title: {plan.title}\n"
+        f"Title: {_quoted_title(plan)}\n"
         f"Plan ID: {plan.id}\n"
         f"Status: {plan.status.value}\n"
         f"Web: {plan_web_url(plan)}\n\n"

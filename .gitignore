@@ -21,3 +21,4 @@ dist/
 
 # Local MCP config (examples are tracked)
 .cursor/mcp.json
+.gstack/
