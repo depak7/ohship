@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Planlog — Plan → Approve → Done</title>
+  <meta name="description" content="Markdown plans humans and coding agents share. Agents read the plan before coding and post Done when they ship." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #f3efe6;
+      --bg-elevated: #faf7f0;
+      --ink: #17211b;
+      --muted: #5d6b62;
+      --line: #d8d1c3;
+      --accent: #0f7a5f;
+      --accent-soft: #d8efe6;
+      --shadow: 0 18px 50px rgba(23, 33, 27, 0.08);
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      color: var(--ink);
+      font-family: Sora, system-ui, sans-serif;
+      background:
+        radial-gradient(circle at top left, rgba(15, 122, 95, 0.08), transparent 32%),
+        linear-gradient(180deg, #f7f3ea 0%, var(--bg) 40%, #ebe4d7 100%);
+    }
+    a { color: inherit; text-decoration: none; }
+    header {
+      position: sticky; top: 0; z-index: 20;
+      border-bottom: 1px solid var(--line);
+      background: color-mix(in srgb, var(--bg) 88%, white);
+      backdrop-filter: blur(8px);
+    }
+    .bar, .wrap { max-width: 64rem; margin: 0 auto; padding: 0 1rem; }
+    .bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: 0.75rem; padding-bottom: 0.75rem; }
+    .logo { font-size: 1.125rem; font-weight: 600; letter-spacing: -0.02em; }
+    nav { display: none; gap: 1.25rem; font-size: 0.875rem; color: var(--muted); }
+    @media (min-width: 640px) { nav { display: flex; } }
+    nav a:hover { color: var(--ink); }
+    .actions { display: flex; gap: 0.5rem; align-items: center; }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center;
+      border-radius: 0.75rem; padding: 0.6rem 1rem; font-size: 0.875rem; font-weight: 500;
+      border: 0; cursor: pointer; font-family: inherit;
+    }
+    .btn-primary { background: var(--ink); color: var(--bg); }
+    .btn-outline { background: transparent; border: 1px solid var(--line); color: var(--ink); }
+    .btn-ghost { background: transparent; color: var(--ink); }
+    .hero { padding: 4rem 0 6rem; }
+    .kicker { font-size: 0.875rem; letter-spacing: 0.2em; text-transform: uppercase; color: var(--accent); }
+    h1 { font-size: clamp(2rem, 5vw, 3rem); font-weight: 600; letter-spacing: -0.03em; max-width: 48rem; margin: 0.75rem 0 0; }
+    .lede { max-width: 36rem; margin-top: 1rem; font-size: 1.125rem; color: var(--muted); line-height: 1.6; }
+    .cta { display: flex; flex-wrap: wrap; gap: 0.75rem; margin-top: 2rem; }
+    section { border-top: 1px solid var(--line); padding: 4rem 0; }
+    h2 { font-size: 1.5rem; font-weight: 600; letter-spacing: -0.02em; margin: 0; }
+    .sub { margin-top: 0.5rem; max-width: 36rem; color: var(--muted); }
+    .grid3 { display: grid; gap: 1rem; margin-top: 2rem; }
+    @media (min-width: 640px) { .grid3 { grid-template-columns: repeat(3, 1fr); } .grid2 { grid-template-columns: 1fr 1fr; } }
+    .card {
+      background: color-mix(in srgb, var(--bg-elevated) 92%, white);
+      border: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      border-radius: 1rem; padding: 1.25rem;
+    }
+    .card .kicker { font-size: 0.75rem; letter-spacing: 0.16em; }
+    .muted { color: var(--muted); font-size: 0.875rem; line-height: 1.5; }
+    pre {
+      overflow-x: auto; border-radius: 0.75rem; background: #1a2420; color: #e8efe9;
+      padding: 0.85rem 1rem; font-size: 0.875rem; margin: 1.5rem 0 0.75rem;
+    }
+    code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.88em; }
+    p code, li code, td code { background: rgba(23,33,27,0.06); padding: 0.12rem 0.35rem; border-radius: 0.3rem; }
+    ul.plain { margin: 1.5rem 0 0; padding: 0; list-style: none; color: var(--muted); font-size: 0.875rem; }
+    ul.plain li { margin: 0.4rem 0; }
+    ol.use { margin: 1.5rem 0 0; padding-left: 1.25rem; color: var(--muted); }
+    ol.use li { margin: 0.6rem 0; }
+    table { width: 100%; max-width: 36rem; border-collapse: collapse; font-size: 0.875rem; margin-top: 2rem; text-align: left; }
+    th { color: var(--muted); font-weight: 500; padding: 0.5rem 1rem 0.5rem 0; border-bottom: 1px solid var(--line); }
+    td { padding: 0.75rem 1rem 0.75rem 0; border-bottom: 1px solid var(--line); vertical-align: top; }
+    .grid2 { display: grid; gap: 1rem; margin-top: 1.5rem; }
+    footer { border-top: 1px solid var(--line); padding: 2.5rem 0; font-size: 0.875rem; color: var(--muted); }
+    footer p { margin: 0.4rem 0; }
+    footer a { color: var(--accent); }
+    footer a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="bar">
+      <a class="logo" href="#top">Planlog</a>
+      <nav>
+        <a href="#how">How it works</a>
+        <a href="#install">Install</a>
+        <a href="#use">Use</a>
+      </nav>
+      <div class="actions">
+        <a class="btn btn-ghost" href="__FRONTEND_URL__/login?next=/plans">Sign in</a>
+        <a class="btn btn-primary" href="__FRONTEND_URL__/login?mode=signup&amp;next=/plans">Get started</a>
+      </div>
+    </div>
+  </header>
+
+  <main id="top" class="wrap">
+    <section class="hero" style="border:0">
+      <p class="kicker">Planlog</p>
+      <h1>Plan → Approve → Done for humans and coding agents.</h1>
+      <p class="lede">Markdown plans are the source of truth. Agents read them before coding and write Done when they ship — not chat history.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="__FRONTEND_URL__/login?mode=signup&amp;next=/plans">Create account</a>
+        <a class="btn btn-outline" href="#install">Copy install command</a>
+      </div>
+    </section>
+
+    <section id="how">
+      <h2>How it works</h2>
+      <p class="sub">One loop for the team and the agent. The plan stays in Planlog.</p>
+      <ol class="grid3" style="list-style:none; padding:0">
+        <li class="card">
+          <p class="kicker">Plan</p>
+          <p class="muted">Write intent, scope, and acceptance criteria in markdown. Project is required.</p>
+        </li>
+        <li class="card">
+          <p class="kicker">Approve</p>
+          <p class="muted">Reviewers suggest changes or approve. Agents update only while the plan is a draft.</p>
+        </li>
+        <li class="card">
+          <p class="kicker">Done</p>
+          <p class="muted">When shipped, post_done with summary and links. That record is permanent.</p>
+        </li>
+      </ol>
+    </section>
+
+    <section id="install">
+      <h2>Install in any repo</h2>
+      <p class="sub">One command. No Planlog clone. Works with Cursor, Claude Code, Copilot, Gemini — any agent that reads a markdown instruction file.</p>
+      <pre><code id="install-cmd">curl -fsSL __INSTALL_URL__ | bash</code></pre>
+      <button class="btn btn-outline" type="button" id="copy-btn">Copy install command</button>
+      <ul class="plain">
+        <li>Grafts Planlog instructions into <code>AGENTS.md</code> / <code>CLAUDE.md</code></li>
+        <li>Wires MCP to <code>__MCP_URL__</code> (OAuth, same login)</li>
+        <li>Installs a Cursor skill so agents <code>get_plan</code> before work and <code>post_done</code> when shipped</li>
+      </ul>
+      <p class="muted" style="margin-top:1rem">Paste this in your repo, reload MCP, then Allow access.</p>
+    </section>
+
+    <section id="use">
+      <h2>Use</h2>
+      <ol class="use">
+        <li>Sign up → create an organization → write a markdown plan</li>
+        <li>Run install in the repo; paste the <code>plan_id</code> in the agent</li>
+        <li>Agent: <code>get_plan</code> → code → <code>post_done</code> (summary + links)</li>
+        <li>Teammates: approve, suggest, or Notify on Done</li>
+      </ol>
+      <table>
+        <thead><tr><th>Do</th><th>Don't</th></tr></thead>
+        <tbody>
+          <tr><td>Read the plan before editing code</td><td>Skip <code>get_plan</code> when a plan_id is known</td></tr>
+          <tr><td><code>post_done</code> with summary + links when finished</td><td>Use <code>add_suggestion</code> to record shipped work</td></tr>
+          <tr><td>Notify teammates for the next implementer</td><td>Leave shipped work only in chat</td></tr>
+        </tbody>
+      </table>
+    </section>
+
+    <section>
+      <h2>Why it sticks</h2>
+      <ul class="grid2" style="list-style:none; padding:0">
+        <li class="card"><p><strong>Done is history</strong></p><p class="muted">Permanent record — not a Slack thread that disappears.</p></li>
+        <li class="card"><p><strong>Share links</strong></p><p class="muted">Team or Anyone links for people inside and outside the org.</p></li>
+        <li class="card"><p><strong>Sent to me</strong></p><p class="muted">Handoffs land in a filter the next person actually opens.</p></li>
+        <li class="card"><p><strong>Any coding agent</strong></p><p class="muted">Cursor, Claude Code, Copilot, Gemini — same markdown contract.</p></li>
+      </ul>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <p>MCP: <code>__MCP_URL__</code></p>
+      <p>Install: <code>curl -fsSL __INSTALL_URL__ | bash</code></p>
+      <p>
+        <a href="https://github.com/depak7/ohship">GitHub</a>
+        ·
+        <a href="__FRONTEND_URL__/login?next=/plans">Sign in</a>
+      </p>
+    </div>
+  </footer>
+  <script>
+    document.getElementById("copy-btn").addEventListener("click", async function () {
+      var cmd = document.getElementById("install-cmd").textContent;
+      await navigator.clipboard.writeText(cmd);
+      this.textContent = "Copied";
+      var btn = this;
+      setTimeout(function () { btn.textContent = "Copy install command"; }, 2000);
+    });
+  </script>
+</body>
+</html>

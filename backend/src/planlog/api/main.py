@@ -11,7 +11,7 @@ from mcp.server.auth.middleware.bearer_auth import BearerAuthBackend
 from mcp.server.auth.routes import create_auth_routes
 from mcp.server.auth.settings import ClientRegistrationOptions
 
-from planlog.api.routes import auth, install, oauth, orgs, plans, public
+from planlog.api.routes import auth, install, oauth, orgs, plans, public, site
 from planlog.config import settings
 from planlog.db import check_db_connection
 from planlog.mcp.server import create_mcp_server, mcp_transport_security
@@ -61,6 +61,7 @@ def health() -> dict:
     }
 
 
+app.include_router(site.router)
 app.include_router(install.router)
 app.include_router(auth.router, prefix="/api/v1")
 app.include_router(orgs.router, prefix="/api/v1")
