@@ -87,7 +87,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       <header className="sticky top-0 z-20 border-b border-[var(--line)] bg-[color-mix(in_srgb,var(--bg)_88%,white)] backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-6">
-            <Link href="/plans" className="text-lg font-semibold tracking-tight">
+            <Link
+              href="/plans"
+              className="flex items-center gap-2 text-lg font-semibold tracking-tight"
+            >
+              {/* Matches the landing page header lockup. */}
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="" width={26} height={26} className="h-[1.6rem] w-[1.6rem]" />
               Planlog
             </Link>
             <nav className="hidden items-center gap-4 text-sm text-[var(--muted)] sm:flex">

@@ -55,8 +55,10 @@ function LoginInner() {
         <div className="mb-8 text-center">
           <a
             href={process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_API_URL || "https://planlog.depak.dev"}
-            className="text-sm uppercase tracking-[0.2em] text-[var(--accent)]"
+            className="inline-flex items-center gap-2 text-sm uppercase tracking-[0.2em] text-[var(--accent)]"
           >
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="" width={22} height={22} className="h-[1.35rem] w-[1.35rem]" />
             Planlog
           </a>
           <h1 className="mt-2 text-3xl font-semibold tracking-tight">

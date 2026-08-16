@@ -65,7 +65,11 @@ function ConsentInner() {
   return (
     <div className="grain flex min-h-screen items-center justify-center px-4">
       <Card className="w-full max-w-md">
-        <p className="text-sm uppercase tracking-[0.18em] text-[var(--accent)]">MCP OAuth</p>
+        <p className="flex items-center gap-2 text-sm uppercase tracking-[0.18em] text-[var(--accent)]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/logo.png" alt="" width={22} height={22} className="h-[1.35rem] w-[1.35rem]" />
+          MCP OAuth
+        </p>
         <h1 className="mt-2 text-2xl font-semibold tracking-tight">
           Allow access to Planlog?
         </h1>
