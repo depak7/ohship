@@ -70,7 +70,11 @@
     .bar { display: flex; align-items: center; justify-content: space-between; gap: 1rem; padding-top: 0.7rem; padding-bottom: 0.7rem; }
 
     /* Wordmark only — same treatment as the app header (text-lg font-semibold tracking-tight). */
-    .logo { font-size: 1.125rem; font-weight: 600; letter-spacing: -0.025em; color: var(--ink); }
+    .logo {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      font-size: 1.125rem; font-weight: 600; letter-spacing: -0.025em; color: var(--ink);
+    }
+    .logo-mark { width: 1.6rem; height: 1.6rem; display: block; }
 
     nav { display: none; gap: 1.4rem; font-size: 0.875rem; color: var(--muted); }
     @media (min-width: 800px) { nav { display: flex; } }
@@ -299,7 +303,7 @@
 <body>
   <header id="site-header">
     <div class="bar">
-      <a class="logo" href="#top">Planlog</a>
+      <a class="logo" href="#top"><img class="logo-mark" src="/static/logo-192.png" alt="" width="26" height="26" />Planlog</a>
       <nav aria-label="Primary">
         <a href="#why-plans">Why</a>
         <a href="#how">How it works</a>
@@ -532,7 +536,7 @@
     <div class="wrap">
       <div class="foot-grid">
         <div>
-          <a class="logo" href="#top">Planlog</a>
+          <a class="logo" href="#top"><img class="logo-mark" src="/static/logo-192.png" alt="" width="26" height="26" />Planlog</a>
           <div class="foot-meta" style="margin-top:0.9rem">
             <span>MCP endpoint <code>__MCP_URL__</code></span>
             <span>Install <code>curl -fsSL __INSTALL_URL__ | bash</code></span>

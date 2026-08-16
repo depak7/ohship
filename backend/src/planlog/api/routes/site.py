@@ -11,6 +11,11 @@ from planlog.constants import PUBLIC_REPO_URL
 
 router = APIRouter(tags=["site"])
 
+# Brand assets live in backend/src/planlog/static/ and are mounted at /static in main.py.
+# They have to be here rather than in frontend/public/ because FastAPI serves the landing
+# page; the Next.js app is a separate deploy on a separate domain.
+STATIC_DIR = files("planlog") / "static"
+
 
 def _analytics_snippet() -> str:
     """Umami tracker, or nothing at all when unconfigured.

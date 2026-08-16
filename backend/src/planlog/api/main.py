@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import AnyHttpUrl
 from starlette.middleware.authentication import AuthenticationMiddleware
 
@@ -89,6 +90,7 @@ def health() -> dict:
     }
 
 
+app.mount("/static", StaticFiles(directory=site.STATIC_DIR), name="static")
 app.include_router(site.router)
 app.include_router(install.router)
 app.include_router(auth.router, prefix="/api/v1")
