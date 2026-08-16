@@ -1,7 +1,7 @@
 from urllib.parse import urlencode
 
 import httpx
-from fastapi import APIRouter, Header, HTTPException, Query, status
+from fastapi import APIRouter, Header, HTTPException, Query, Request, status
 from fastapi.responses import RedirectResponse
 from sqlmodel import select
 
@@ -13,6 +13,7 @@ from planlog.auth import (
     hash_api_key,
     verify_password,
 )
+from planlog import analytics
 from planlog.config import settings
 from planlog.models import User
 from planlog.schemas import (
@@ -57,20 +58,22 @@ def google_config() -> GoogleConfigResponse:
 
 
 @router.post("/signup", response_model=AuthResponse, status_code=status.HTTP_201_CREATED)
-def signup(body: SignupRequest, session: DbSession) -> AuthResponse:
+def signup(body: SignupRequest, session: DbSession, request: Request) -> AuthResponse:
     existing = session.exec(select(User).where(User.email == body.email.lower().strip())).first()
     if existing:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Email already registered")
 
     user, api_key = create_user(session, body.name.strip(), body.email, password=body.password)
+    analytics.track("signup", request=request, method="email")
     return _auth_response(user, api_key=api_key)
 
 
 @router.post("/login", response_model=AuthResponse)
-def login(body: LoginRequest, session: DbSession) -> AuthResponse:
+def login(body: LoginRequest, session: DbSession, request: Request) -> AuthResponse:
     user = session.exec(select(User).where(User.email == body.email.lower().strip())).first()
     if not user or not user.password_hash or not verify_password(body.password, user.password_hash):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid email or password")
+    analytics.track("login", request=request, method="email")
     return _auth_response(user)
 
 
@@ -118,7 +121,7 @@ def google_start() -> RedirectResponse:
 
 
 @router.get("/google/callback")
-def google_callback(session: DbSession, code: str = Query(...)) -> RedirectResponse:
+def google_callback(session: DbSession, request: Request, code: str = Query(...)) -> RedirectResponse:
     if not settings.google_client_id or not settings.google_client_secret:
         raise HTTPException(status_code=status.HTTP_501_NOT_IMPLEMENTED, detail="Google login not configured")
 
@@ -162,6 +165,7 @@ def google_callback(session: DbSession, code: str = Query(...)) -> RedirectRespo
             google_id=google_id,
             avatar_url=avatar,
         )
+        analytics.track("signup", request=request, method="google")
     else:
         user.google_id = google_id
         user.avatar_url = avatar or user.avatar_url
@@ -170,6 +174,7 @@ def google_callback(session: DbSession, code: str = Query(...)) -> RedirectRespo
         session.add(user)
         session.commit()
         session.refresh(user)
+        analytics.track("login", request=request, method="google")
 
     token = create_access_token(user.id)
     frontend = settings.frontend_url.rstrip("/")

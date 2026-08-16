@@ -294,6 +294,7 @@
       *, *::before, *::after { animation-duration: 0.001ms !important; animation-iteration-count: 1 !important; transition-duration: 0.001ms !important; }
     }
   </style>
+  __ANALYTICS_SNIPPET__
 </head>
 <body>
   <header id="site-header">
@@ -310,8 +311,8 @@
         <a class="icon-btn" href="__REPO_URL__" target="_blank" rel="noopener noreferrer" aria-label="Planlog on GitHub" title="View source on GitHub">
           <svg viewBox="0 0 16 16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
         </a>
-        <a class="btn btn-ghost hide-xs" href="__FRONTEND_URL__/login?next=/plans">Sign in</a>
-        <a class="btn btn-primary" href="__FRONTEND_URL__/login?mode=signup&amp;next=/plans">Get started</a>
+        <a class="btn btn-ghost hide-xs" href="__FRONTEND_URL__/login?next=/plans" data-umami-event="cta-signin" data-umami-event-loc="header">Sign in</a>
+        <a class="btn btn-primary" href="__FRONTEND_URL__/login?mode=signup&amp;next=/plans" data-umami-event="cta-signup" data-umami-event-loc="header">Get started</a>
       </div>
     </div>
   </header>
@@ -331,7 +332,7 @@
         <div class="terminal-bar">
           <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
           <span class="terminal-title">your-repo — bash</span>
-          <button class="copy" type="button" data-copy="curl -fsSL __INSTALL_URL__ | bash" aria-label="Copy install command">
+          <button class="copy" data-umami-event="install-copied" data-umami-event-loc="hero" type="button" data-copy="curl -fsSL __INSTALL_URL__ | bash" aria-label="Copy install command">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             <span class="label">Copy</span>
           </button>
@@ -340,8 +341,8 @@
       </div>
 
       <div class="cta">
-        <a class="btn btn-primary btn-lg" href="__FRONTEND_URL__/login?mode=signup&amp;next=/plans">Create free account</a>
-        <a class="btn btn-outline btn-lg" href="__REPO_URL__" target="_blank" rel="noopener noreferrer">
+        <a class="btn btn-primary btn-lg" href="__FRONTEND_URL__/login?mode=signup&amp;next=/plans" data-umami-event="cta-signup" data-umami-event-loc="hero">Create free account</a>
+        <a class="btn btn-outline btn-lg" data-umami-event="cta-github" data-umami-event-loc="hero" href="__REPO_URL__" target="_blank" rel="noopener noreferrer">
           <svg viewBox="0 0 16 16" fill="currentColor" width="16" height="16" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
           Star on GitHub
         </a>
@@ -413,7 +414,7 @@
         <div class="terminal-bar">
           <span class="dots" aria-hidden="true"><i></i><i></i><i></i></span>
           <span class="terminal-title">planlog install</span>
-          <button class="copy" type="button" data-copy="curl -fsSL __INSTALL_URL__ | bash" aria-label="Copy install command">
+          <button class="copy" data-umami-event="install-copied" data-umami-event-loc="install" type="button" data-copy="curl -fsSL __INSTALL_URL__ | bash" aria-label="Copy install command">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
             <span class="label">Copy</span>
           </button>
@@ -521,7 +522,7 @@
       <h2>Give your agents a plan to follow</h2>
       <p class="sub">Set it up in under a minute. Your next agent session starts from the plan, not from scratch.</p>
       <div class="cta">
-        <a class="btn btn-primary btn-lg" href="__FRONTEND_URL__/login?mode=signup&amp;next=/plans">Create free account</a>
+        <a class="btn btn-primary btn-lg" href="__FRONTEND_URL__/login?mode=signup&amp;next=/plans" data-umami-event="cta-signup" data-umami-event-loc="footer">Create free account</a>
         <a class="btn btn-outline btn-lg" href="#install">See the install</a>
       </div>
     </div>

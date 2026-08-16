@@ -1,7 +1,8 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException, Request, status
 
+from planlog import analytics
 from planlog.auth import CurrentUser, DbSession
 from planlog.models import Organization, OrgRole
 from planlog.schemas import (
@@ -47,8 +48,10 @@ def create_org(
     body: OrganizationCreate,
     session: DbSession,
     user: CurrentUser,
+    request: Request,
 ) -> OrganizationResponse:
     org = create_organization(session, body.name, user)
+    analytics.track("org-created", request=request)
     return OrganizationResponse(
         id=org.id,
         name=org.name,

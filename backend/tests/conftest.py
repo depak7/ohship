@@ -3,12 +3,41 @@ from fastapi.testclient import TestClient
 from sqlmodel import Session, SQLModel, create_engine
 from sqlmodel.pool import StaticPool
 
+from planlog import analytics
 from planlog.api.main import app
 from planlog.auth import hash_api_key
 from planlog.db import get_session
 from planlog.models import Organization, User
 from planlog.oauth import provider as provider_module
 from planlog.services.orgs import create_organization
+
+
+@pytest.fixture(autouse=True)
+def captured_events(monkeypatch):
+    """Enable analytics but capture events in-process instead of sending them.
+
+    Turning it on (rather than leaving it disabled) means the hooks are actually exercised by
+    the suite, so a deleted `track()` call fails a test. `_post` is replaced with something
+    that raises, so a real network call can never slip through.
+    """
+    events: list[dict] = []
+
+    class _InlineQueue:
+        def put_nowait(self, event):
+            events.append(event)
+
+    class _InlineLoop:
+        def call_soon_threadsafe(self, fn, *args):
+            fn(*args)
+
+    async def _forbidden(*args, **kwargs):
+        raise AssertionError("analytics made a real network call during tests")
+
+    monkeypatch.setattr(analytics.settings, "umami_website_id", "test-website-id")
+    monkeypatch.setattr(analytics, "_queue", _InlineQueue())
+    monkeypatch.setattr(analytics, "_loop", _InlineLoop())
+    monkeypatch.setattr(analytics, "_post", _forbidden)
+    return events
 
 
 @pytest.fixture(name="test_engine")

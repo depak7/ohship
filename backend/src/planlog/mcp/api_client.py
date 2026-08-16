@@ -37,6 +37,9 @@ class PlanlogAPIClient:
         return {
             "Authorization": f"Bearer {self.access_token}",
             "Content-Type": "application/json",
+            # MCP tools loop back over the same HTTP routes a browser uses, so this is the
+            # only thing that distinguishes an agent-created plan from a human one.
+            "User-Agent": "planlog-mcp/0.1.0",
         }
 
     def _org_id(self, organization_id: str | None = None) -> str:

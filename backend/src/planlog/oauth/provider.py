@@ -23,6 +23,7 @@ from mcp.server.auth.provider import (
 )
 from mcp.shared.auth import OAuthClientInformationFull, OAuthToken
 
+from planlog import analytics
 from planlog.auth import create_access_token, try_decode_access_token
 from planlog.config import settings
 from planlog.db import engine
@@ -190,6 +191,27 @@ class PlanlogOAuthProvider(OAuthAuthorizationServerProvider[AuthorizationCode, R
         except Exception:
             logger.exception("Failed to persist OAuth client %s", client_info.client_id)
         logger.info("Registered OAuth client %s redirects=%s", client_info.client_id, client_info.redirect_uris)
+        # Which agents people actually use is otherwise only visible in a log line.
+        analytics.track(
+            "mcp-client-registered", agent=analytics.normalize_agent(client_info.client_name)
+        )
+
+    def client_name_for(self, client_id: str) -> str | None:
+        """Sync lookup of a registered client's name, for analytics attribution.
+
+        `get_client` is async and the consent route is sync, so this reads the in-process
+        cache first and falls back to the durable record.
+        """
+        cached = self.clients.get(client_id)
+        if cached is not None:
+            return cached.client_name
+        try:
+            with _db() as session:
+                row = session.get(OAuthClientRecord, client_id)
+                return (row.payload or {}).get("client_name") if row else None
+        except Exception:
+            logger.debug("Failed to resolve client name for %s", client_id, exc_info=True)
+            return None
 
     async def authorize(self, client: OAuthClientInformationFull, params: AuthorizationParams) -> str:
         # Internal state for our consent page; preserve client state separately

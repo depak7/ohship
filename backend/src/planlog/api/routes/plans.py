@@ -1,7 +1,8 @@
 from uuid import UUID
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Request, status
 
+from planlog import analytics
 from planlog.auth import CurrentUser, DbSession
 from planlog.models import Plan, PlanStatus, utcnow
 from planlog.schemas import (
@@ -34,6 +35,13 @@ from planlog.services.plans import (
 from planlog.services.share import set_plan_share
 from planlog.services.suggestions import add_suggestion
 
+def _source(request: Request) -> str:
+    """web vs mcp — MCP tools loop back over these same HTTP routes, so only the
+    User-Agent distinguishes an agent-driven action from a human one."""
+    ua = (request.headers.get("user-agent") or "").lower()
+    return "mcp" if ua.startswith("planlog-mcp") else "web"
+
+
 router = APIRouter(prefix="/plans", tags=["plans"])
 
 
@@ -42,7 +50,9 @@ def _assert_plan_access(session, plan: Plan, user_id: UUID) -> None:
 
 
 @router.post("", response_model=PlanDetail, status_code=status.HTTP_201_CREATED)
-def create_plan(body: PlanCreate, session: DbSession, user: CurrentUser) -> PlanDetail:
+def create_plan(
+    body: PlanCreate, session: DbSession, user: CurrentUser, request: Request
+) -> PlanDetail:
     require_membership(session, body.organization_id, user.id)
     plan = Plan(
         organization_id=body.organization_id,
@@ -60,6 +70,9 @@ def create_plan(body: PlanCreate, session: DbSession, user: CurrentUser) -> Plan
     session.add(plan)
     session.commit()
     session.refresh(plan)
+    analytics.track(
+        "plan-created", request=request, source=_source(request), has_project=bool(body.project)
+    )
     return plan_to_detail(session, plan)
 
 
@@ -221,10 +234,14 @@ def create_suggestion(
 
 
 @router.post("/{plan_id}/approve", response_model=PlanDetail)
-def approve_plan(plan_id: UUID, session: DbSession, user: CurrentUser) -> PlanDetail:
+def approve_plan(
+    plan_id: UUID, session: DbSession, user: CurrentUser, request: Request
+) -> PlanDetail:
     plan = get_plan_or_404(session, plan_id)
     _assert_plan_access(session, plan, user.id)
-    return _handle_transition(session, plan, "approve_plan", user)
+    detail = _handle_transition(session, plan, "approve_plan", user)
+    analytics.track("plan-approved", request=request, source=_source(request))
+    return detail
 
 
 @router.post("/{plan_id}/request-changes", response_model=PlanDetail)
@@ -267,6 +284,7 @@ def post_plan_done(
     body: DoneCreate,
     session: DbSession,
     user: CurrentUser,
+    request: Request,
 ) -> PlanDetail:
     plan = get_plan_or_404(session, plan_id)
     _assert_plan_access(session, plan, user.id)
@@ -284,4 +302,12 @@ def post_plan_done(
     except PlanTransitionError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.message) from e
     session.refresh(plan)
+    links = len(body.links)
+    analytics.track(
+        "done-posted",
+        request=request,
+        source=_source(request),
+        links="3+" if links >= 3 else str(links),
+        has_handoff=bool(body.handoff_notes),
+    )
     return plan_to_detail(session, plan)

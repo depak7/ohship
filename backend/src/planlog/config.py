@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     jwt_expire_hours: int = 168
     google_client_id: str = ""
     google_client_secret: str = ""
+    # Analytics is off unless a website id is set — same empty-string-means-disabled pattern
+    # as Google OAuth above. Deliberately not defaulted to Planlog's own id, so self-hosters
+    # never ship their traffic to us.
+    umami_website_id: str = ""
+    umami_host: str = "https://cloud.umami.is"
 
     @field_validator("database_url", mode="before")
     @classmethod

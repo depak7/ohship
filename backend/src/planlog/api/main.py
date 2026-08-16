@@ -13,6 +13,7 @@ from mcp.server.auth.middleware.bearer_auth import BearerAuthBackend
 from mcp.server.auth.routes import create_auth_routes
 from mcp.server.auth.settings import ClientRegistrationOptions
 
+from planlog import analytics
 from planlog.api.routes import auth, install, oauth, orgs, plans, public, site
 from planlog.config import settings
 from planlog.db import check_db_connection
@@ -51,7 +52,7 @@ def _warn_if_multi_worker() -> None:
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     _warn_if_multi_worker()
-    async with mcp_http.session_manager.run():
+    async with analytics.lifespan(), mcp_http.session_manager.run():
         yield
 
 
