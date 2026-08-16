@@ -4,14 +4,14 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import { AppShell } from "@/components/app-shell";
-import { Button, Card, Label, Textarea } from "@/components/ui";
+import { Button, Card, Input, Label, Select, Textarea } from "@/components/ui";
 import { DonePanel, PlanLifecycle, PlanStatusBadge } from "@/components/plan-panels";
 import { Markdown } from "@/components/markdown";
 import { NotifySidebar } from "@/components/notify-sidebar";
 import { OpenInAgent } from "@/components/open-in-agent";
 import { ReviewersSidebar } from "@/components/reviewers-sidebar";
 import { ensureAnyoneLink, ShareSidebar } from "@/components/share-sidebar";
-import { api, DoneLink, Member, PlanDetail } from "@/lib/api";
+import { api, CriterionStatus, DoneLink, Member, parseCriteria, PlanDetail } from "@/lib/api";
 import { getToken } from "@/lib/auth";
 
 export default function PlanDetailPage() {
@@ -27,6 +27,7 @@ export default function PlanDetailPage() {
   const [actionLoading, setActionLoading] = useState(false);
   const [comment, setComment] = useState("");
   const [showDoneForm, setShowDoneForm] = useState(false);
+  const [outcomes, setOutcomes] = useState<Record<string, { status: CriterionStatus; note: string }>>({});
   const [viewMode, setViewMode] = useState<"rendered" | "source">("rendered");
   const [doneSummary, setDoneSummary] = useState("");
   const [doneNotes, setDoneNotes] = useState("");
@@ -107,12 +108,64 @@ export default function PlanDetailPage() {
   }
 
   const canShip = plan.status !== "done";
+  const criteria = parseCriteria(plan.acceptance_criteria);
 
   const doneForm = showDoneForm && canShip && (
     <div className="mt-4 space-y-4 border-t border-[var(--line)] pt-4">
       <p className="text-sm text-[var(--muted)]">
         Marks the plan as Done (self-approves and claims if needed). Review steps are optional.
       </p>
+      {criteria.length > 0 && (
+        <div>
+          <Label>Against the plan</Label>
+          <p className="mb-2 text-xs text-[var(--muted)]">
+            Anything you leave alone is recorded as not reported — never as met.
+          </p>
+          <ul className="space-y-2">
+            {criteria.map((criterion) => {
+              const current = outcomes[criterion]?.status || "unreported";
+              return (
+                <li key={criterion} className="rounded-xl border border-[var(--line)] p-3">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <span className="min-w-0 text-sm">{criterion}</span>
+                    <Select
+                      className="text-xs"
+                      value={current}
+                      onChange={(e) =>
+                        setOutcomes((prev) => ({
+                          ...prev,
+                          [criterion]: {
+                            status: e.target.value as CriterionStatus,
+                            note: prev[criterion]?.note || "",
+                          },
+                        }))
+                      }
+                    >
+                      <option value="unreported">Not reported</option>
+                      <option value="met">Met</option>
+                      <option value="changed">Changed</option>
+                      <option value="dropped">Dropped</option>
+                    </Select>
+                  </div>
+                  {(current === "changed" || current === "dropped") && (
+                    <Input
+                      className="mt-2 text-sm"
+                      placeholder="Why did this change?"
+                      value={outcomes[criterion]?.note || ""}
+                      onChange={(e) =>
+                        setOutcomes((prev) => ({
+                          ...prev,
+                          [criterion]: { status: current, note: e.target.value },
+                        }))
+                      }
+                    />
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
+      )}
       <div>
         <Label htmlFor="summary">Summary (markdown)</Label>
         <Textarea
@@ -169,6 +222,13 @@ export default function PlanDetailPage() {
               links: parseLinks(doneLinks),
               residual_notes: doneNotes || undefined,
               handoff_notes: handoffNotes.trim() || undefined,
+              reconciliation: criteria
+                .filter((c) => outcomes[c] && outcomes[c].status !== "unreported")
+                .map((c) => ({
+                  criterion: c,
+                  status: outcomes[c].status,
+                  note: outcomes[c].note.trim() || null,
+                })),
             });
             setPlan(updated);
             setShowDoneForm(false);

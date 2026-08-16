@@ -4,13 +4,14 @@ import { Button } from "@/components/ui";
 import { Markdown } from "@/components/markdown";
 import { PublicDonePanel } from "@/components/public-done-panel";
 import { PlanStatusBadge } from "@/components/plan-panels";
-import { PlanStatus } from "@/lib/api";
+import { PlanStatus, CriterionOutcome } from "@/lib/api";
 
 export const metadata: Metadata = {
   robots: { index: false, follow: false },
 };
 
 interface PublicDone {
+  reconciliation?: CriterionOutcome[];
   summary: string;
   links: { type: string; url: string; label: string }[];
   residual_notes: string | null;

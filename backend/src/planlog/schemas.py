@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 from uuid import UUID
 
 from pydantic import BaseModel, EmailStr, Field
@@ -136,12 +136,21 @@ class NotifyResponse(UserBrief):
     requested_at: Optional[datetime] = None
 
 
+class CriterionOutcome(BaseModel):
+    """What happened to one acceptance criterion by the time the plan shipped."""
+
+    criterion: str
+    status: Literal["met", "changed", "dropped", "unreported", "extra"] = "unreported"
+    note: Optional[str] = None
+
+
 class DoneCreate(BaseModel):
     summary: str = Field(min_length=1)
     links: list[DoneLink] = Field(default_factory=list)
     residual_notes: Optional[str] = None
     handoff_notes: Optional[str] = None
     handoff_to: list[UUID] = Field(default_factory=list)
+    reconciliation: list[CriterionOutcome] = Field(default_factory=list)
 
 
 class SharePlanBody(BaseModel):
@@ -164,6 +173,7 @@ class DoneResponse(BaseModel):
     links: list[dict[str, Any]]
     residual_notes: Optional[str]
     handoff_notes: Optional[str] = None
+    reconciliation: list[dict[str, Any]] = Field(default_factory=list)
     posted_by: UserBrief
     posted_at: datetime
     handoff_to: list[UserBrief] = Field(default_factory=list)
@@ -206,6 +216,8 @@ class PlanListResponse(BaseModel):
 class PublicDoneResponse(BaseModel):
     summary: str
     links: list[dict[str, Any]]
+    # Statuses only — notes carry internal reasoning and stay out of the public view.
+    reconciliation: list[dict[str, Any]] = Field(default_factory=list)
     residual_notes: Optional[str]
     posted_by_name: str
     posted_at: datetime

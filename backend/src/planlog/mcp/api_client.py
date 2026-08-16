@@ -141,6 +141,10 @@ class PlanlogAPIClient:
         links: list[dict[str, str]] | None = None,
         residual_notes: str | None = None,
         handoff_to: list[str] | None = None,
+        # handoff_notes was missing here while agent_ship_prompt told agents to send it,
+        # so every agent that followed our own instructions failed.
+        handoff_notes: str | None = None,
+        reconciliation: list[dict[str, Any]] | None = None,
     ) -> dict[str, Any]:
         return self._request(
             "POST",
@@ -149,7 +153,9 @@ class PlanlogAPIClient:
                 "summary": summary,
                 "links": links or [],
                 "residual_notes": residual_notes,
+                "handoff_notes": handoff_notes,
                 "handoff_to": handoff_to or [],
+                "reconciliation": reconciliation or [],
             },
         )
 

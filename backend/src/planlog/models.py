@@ -226,6 +226,12 @@ class DoneRecord(SQLModel, table=True):
     )
     residual_notes: Optional[str] = Field(default=None, sa_column=Column(Text))
     handoff_notes: Optional[str] = Field(default=None, sa_column=Column(Text))
+    # Per-criterion outcome against the approved plan: [{criterion, status, note}].
+    # Snapshotted here rather than referencing the plan, so the record stays self-contained.
+    reconciliation: list[dict[str, Any]] = Field(
+        default_factory=list,
+        sa_column=Column(JSON, nullable=False, server_default="[]"),
+    )
     posted_by_id: UUID = Field(foreign_key="users.id")
     posted_at: datetime = Field(
         default_factory=utcnow,

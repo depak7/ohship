@@ -138,7 +138,12 @@ def _register_tools(mcp: MCPServer) -> None:
         project: str | None = None,
         organization_id: str | None = None,
     ) -> str:
-        """Create a new Plan in draft status. project is required."""
+        """Create a new Plan in draft status. project is required.
+
+        Write acceptance_criteria as a markdown list, one criterion per line ("- ..."), because
+        each line is reconciled individually when the plan ships. A single prose blob is treated
+        as one criterion and loses that resolution.
+        """
         try:
             return format_result(
                 _client().create_plan(
@@ -246,15 +251,30 @@ def _register_tools(mcp: MCPServer) -> None:
         links_json: str = "[]",
         residual_notes: str | None = None,
         handoff_to: str | None = None,
+        handoff_notes: str | None = None,
+        reconciliation_json: str = "[]",
     ) -> str:
-        """Post a Done summary from any pre-done status (auto self-approves and claims). links_json is a JSON array of {type, url, label}. handoff_to is comma-separated user UUIDs."""
+        """Post a Done summary from any pre-done status (auto self-approves and claims).
+
+        links_json is a JSON array of {type, url, label}. handoff_to is comma-separated user UUIDs.
+        handoff_notes is what the next person needs to know.
+
+        reconciliation_json accounts for every acceptance criterion in the plan: a JSON array of
+        {criterion, status, note} where criterion is the criterion text from get_plan, and status
+        is "met", "changed" or "dropped". Give a note for anything not met — that is how plan
+        drift becomes visible instead of being buried in the summary. Criteria you omit are
+        recorded as unreported, not as met.
+        """
         import json
 
         try:
             links = json.loads(links_json) if links_json else []
+            outcomes = json.loads(reconciliation_json) if reconciliation_json else []
             ids = [part.strip() for part in handoff_to.split(",") if part.strip()] if handoff_to else None
             return format_result(
-                _client().post_done(plan_id, summary, links, residual_notes, ids)
+                _client().post_done(
+                    plan_id, summary, links, residual_notes, ids, handoff_notes, outcomes
+                )
             )
         except Exception as e:
             return _error_message(e)

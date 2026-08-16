@@ -1,7 +1,10 @@
 import { Badge } from "@/components/ui";
+import { CriterionOutcome } from "@/lib/api";
 import { Markdown } from "@/components/markdown";
+import { Reconciliation } from "@/components/plan-panels";
 
 interface PublicDone {
+  reconciliation?: CriterionOutcome[];
   summary: string;
   links: { type: string; url: string; label: string }[];
   residual_notes: string | null;
@@ -37,6 +40,11 @@ export function PublicDonePanel({ plan }: { plan: PublicPlan }) {
         </p>
         <Markdown content={done.summary} />
       </section>
+
+      {/* Status only — notes are stripped server-side for public links. */}
+      {done.reconciliation && done.reconciliation.length > 0 && (
+        <Reconciliation outcomes={done.reconciliation} showNotes={false} />
+      )}
 
       {done.links.length > 0 && (
         <div className="flex flex-wrap gap-2">

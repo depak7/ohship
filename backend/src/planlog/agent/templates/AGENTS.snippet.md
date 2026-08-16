@@ -15,7 +15,7 @@ Use Planlog when work is tied to a **plan_id** or a new feature slice in an org 
 1. `list_orgs` — note `organization_id` and project name
 2. `get_plan(plan_id)` before coding (or `create_plan` for new work; **project** is required)
 3. `update_plan` only while status is `draft` or `changes_requested`
-4. `post_done(plan_id, summary, links_json, handoff_notes)` when shipped — **always** record finished work here
+4. `post_done(plan_id, summary, links_json, handoff_notes, reconciliation_json)` when shipped — **always** record finished work here
 5. `request_notifyees(plan_id, notify_ids)` for teammates; copy Anyone share link for people outside the org
 
 ### Do
@@ -24,6 +24,7 @@ Use Planlog when work is tied to a **plan_id** or a new feature slice in an org 
 |----|-----|
 | Read the plan before editing code | Intent and acceptance criteria live in Planlog |
 | `post_done` with summary + links when finished | Done is the permanent record |
+| Account for every acceptance criterion in `reconciliation_json` | Criteria you omit are recorded as unreported, not met |
 | `request_notifyees` for the next implementer | They see it under **Sent to me** |
 
 ### Don't

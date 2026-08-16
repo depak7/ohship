@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Badge, Button } from "@/components/ui";
-import { PlanDetail, STATUS_LABELS } from "@/lib/api";
+import { CriterionOutcome, CriterionStatus, PlanDetail, STATUS_LABELS } from "@/lib/api";
 import { Markdown } from "@/components/markdown";
 import { ensureAnyoneLink } from "@/components/share-sidebar";
 import { formatWhen } from "@/lib/utils";
@@ -86,6 +86,8 @@ export function DonePanel({ plan }: { plan: PlanDetail }) {
         <Markdown content={plan.done.summary} />
       </section>
 
+      <Reconciliation outcomes={plan.done.reconciliation} />
+
       {plan.done.handoff_notes && (
         <section className="surface rounded-2xl border-l-4 border-l-[var(--accent)] p-6 md:p-8">
           <p className="mb-3 text-xs font-semibold uppercase tracking-[0.16em] text-[var(--accent)]">
@@ -130,6 +132,80 @@ export function DonePanel({ plan }: { plan: PlanDetail }) {
         </div>
       </details>
     </div>
+  );
+}
+
+const OUTCOME_STYLE: Record<CriterionStatus, { label: string; className: string; mark: string }> = {
+  met: { label: "Met", className: "text-[var(--accent)]", mark: "✓" },
+  changed: { label: "Changed", className: "text-[var(--warn)]", mark: "~" },
+  dropped: { label: "Dropped", className: "text-[var(--danger)]", mark: "×" },
+  unreported: { label: "Not reported", className: "text-[var(--muted)]", mark: "?" },
+  extra: { label: "Not in plan", className: "text-[var(--muted)]", mark: "+" },
+};
+
+/**
+ * What happened to each acceptance criterion.
+ *
+ * The point of the section is the rows that aren't "met" — a Done summary can read perfectly
+ * while quietly having dropped a criterion, and that is the drift this makes visible.
+ */
+export function Reconciliation({
+  outcomes,
+  showNotes = true,
+}: {
+  outcomes?: CriterionOutcome[];
+  showNotes?: boolean;
+}) {
+  if (!outcomes || outcomes.length === 0) {
+    return (
+      <section className="rounded-2xl border border-dashed border-[var(--line)] p-5 text-sm text-[var(--muted)]">
+        <span className="font-medium text-[var(--ink)]">Not reconciled.</span> This Done didn&apos;t
+        report against the plan&apos;s acceptance criteria, so what shipped hasn&apos;t been checked
+        off against what was approved.
+      </section>
+    );
+  }
+
+  const drifted = outcomes.filter((o) => o.status === "changed" || o.status === "dropped").length;
+  const met = outcomes.filter((o) => o.status === "met").length;
+
+  return (
+    <section className="surface rounded-2xl p-6 md:p-8">
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--done)]">
+          Against the plan
+        </p>
+        <p className="text-xs text-[var(--muted)]">
+          {met}/{outcomes.length} met
+          {drifted > 0 && (
+            <span className="font-medium text-[var(--warn)]"> · {drifted} drifted</span>
+          )}
+        </p>
+      </div>
+      <ul className="space-y-3">
+        {outcomes.map((o, i) => {
+          const style = OUTCOME_STYLE[o.status] || OUTCOME_STYLE.unreported;
+          return (
+            <li key={i} className="flex gap-3 text-sm">
+              <span className={`mt-0.5 w-4 shrink-0 text-center font-semibold ${style.className}`}>
+                {style.mark}
+              </span>
+              <div className="min-w-0">
+                <p className={o.status === "dropped" ? "text-[var(--muted)] line-through" : ""}>
+                  {o.criterion}
+                </p>
+                <p className={`text-xs ${style.className}`}>
+                  {style.label}
+                  {showNotes && o.note ? (
+                    <span className="text-[var(--muted)]"> — {o.note}</span>
+                  ) : null}
+                </p>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </section>
   );
 }
 

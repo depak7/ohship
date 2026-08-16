@@ -4,6 +4,7 @@ from uuid import UUID
 from sqlmodel import Session, select
 
 from planlog.models import DoneHandoff, DoneRecord, Plan, PlanStatus, User, utcnow
+from planlog.services.helpers import build_reconciliation
 from planlog.services.orgs import require_membership
 from planlog.services.plans import (
     SHIPPABLE_STATUSES,
@@ -22,6 +23,8 @@ def post_done(
     residual_notes: str | None = None,
     handoff_notes: str | None = None,
     handoff_to: list[UUID] | None = None,
+    # Appended, never inserted: the route and the transition tests call this positionally.
+    reconciliation: list[dict[str, Any]] | None = None,
 ) -> DoneRecord:
     if plan.status == PlanStatus.done:
         raise PlanTransitionError("Plan is already done")
@@ -49,6 +52,8 @@ def post_done(
         links=links,
         residual_notes=residual_notes,
         handoff_notes=handoff_notes,
+        # Always the full criteria list — anything unreported is named, not omitted.
+        reconciliation=build_reconciliation(plan.acceptance_criteria, reconciliation),
         posted_by_id=actor.id,
         posted_at=utcnow(),
     )

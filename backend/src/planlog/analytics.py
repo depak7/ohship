@@ -63,7 +63,7 @@ EVENTS: dict[str, frozenset[str]] = {
     "mcp-agent-connected": frozenset({"agent"}),
     "plan-created": frozenset({"source", "has_project"}),
     "plan-approved": frozenset({"source"}),
-    "done-posted": frozenset({"source", "links", "has_handoff"}),
+    "done-posted": frozenset({"source", "links", "has_handoff", "reconciled", "drifted"}),
 }
 
 # Attached to every event from the captured User-Agent; not declared per-event above.

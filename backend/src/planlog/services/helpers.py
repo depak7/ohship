@@ -1,3 +1,5 @@
+import re
+from typing import Any
 from uuid import UUID
 
 from sqlmodel import Session, select
@@ -71,8 +73,14 @@ def agent_ship_prompt(plan: Plan) -> str:
         f"Workflow:\n"
         f"1. get_plan(plan_id=\"{plan.id}\") — read intent and acceptance criteria first\n"
         f"2. update_plan(...) only if still draft or changes_requested\n"
-        f"3. When finished: post_done(plan_id=\"{plan.id}\", summary=\"...\", links_json=\"[]\", handoff_notes=\"...\")\n"
+        f"3. When finished: post_done(plan_id=\"{plan.id}\", summary=\"...\", links_json=\"[]\", "
+        f"handoff_notes=\"...\", reconciliation_json=\"[...]\")\n"
         f"4. request_notifyees(plan_id=\"{plan.id}\", notify_ids=\"uuid,...\") for teammates\n\n"
+        f"reconciliation_json must account for every acceptance criterion: a JSON array of\n"
+        f"{{\"criterion\": \"<exact text from the plan>\", \"status\": \"met\"|\"changed\"|\"dropped\", "
+        f"\"note\": \"why\"}}.\n"
+        f"If implementation forced a change, say so there rather than burying it in the summary —\n"
+        f"criteria you leave out are recorded as unreported, not as met.\n\n"
         f"Do not use add_suggestion to record shipped work — use post_done.\n"
     )
 
@@ -163,6 +171,64 @@ def plan_share_url(plan: Plan) -> str | None:
     return None
 
 
+_LIST_ITEM = re.compile(r"^\s*(?:[-*+]\s+(?:\[[ xX]\]\s*)?|\d+[.)]\s+)(?P<text>.+?)\s*$")
+
+CRITERION_STATUSES = ("met", "changed", "dropped", "unreported")
+
+
+def parse_criteria(acceptance_criteria: str) -> list[str]:
+    """Split acceptance criteria into individual items.
+
+    Criteria are stored as one free-text markdown blob, so this is the only place the
+    codebase turns them into things you can reason about one at a time. Handles `-`, `*`,
+    `+`, GFM checkboxes and numbered lists. Prose with no list markers is a single
+    criterion rather than nothing — an unparseable plan should still be reconcilable.
+    """
+    items = [
+        m.group("text").strip()
+        for line in (acceptance_criteria or "").splitlines()
+        if (m := _LIST_ITEM.match(line)) and m.group("text").strip()
+    ]
+    if items:
+        return items
+    blob = (acceptance_criteria or "").strip()
+    return [blob] if blob else []
+
+
+def _normalize(text: str) -> str:
+    return " ".join(text.split()).casefold()
+
+
+def build_reconciliation(
+    acceptance_criteria: str, reported: list[dict[str, Any]] | None
+) -> list[dict[str, Any]]:
+    """Reconcile what the agent reported against every criterion in the plan.
+
+    The stored list always covers every criterion — anything the agent didn't mention comes
+    back as `unreported` rather than being absent. Silence is the most common way drift
+    hides, so it gets a name instead of a gap.
+    """
+    criteria = parse_criteria(acceptance_criteria)
+    by_text = {_normalize(item.get("criterion", "")): item for item in (reported or [])}
+
+    outcomes: list[dict[str, Any]] = []
+    for criterion in criteria:
+        item = by_text.pop(_normalize(criterion), None)
+        status = (item or {}).get("status")
+        if status not in CRITERION_STATUSES:
+            status = "unreported"
+        note = (item or {}).get("note") or None
+        outcomes.append({"criterion": criterion, "status": status, "note": note})
+
+    # Anything reported that matches no criterion is kept, never counted as met — an agent
+    # inventing criteria shouldn't be able to manufacture a clean bill of health.
+    for leftover in by_text.values():
+        text = (leftover.get("criterion") or "").strip()
+        if text:
+            outcomes.append({"criterion": text, "status": "extra", "note": leftover.get("note")})
+    return outcomes
+
+
 def plan_to_markdown(plan: Plan, reviewers: list[ReviewerResponse] | None = None) -> str:
     parts = [
         f"# {plan.title}",
@@ -240,6 +306,7 @@ def plan_to_detail(session: Session, plan: Plan) -> PlanDetail:
             links=done_record.links,
             residual_notes=done_record.residual_notes,
             handoff_notes=done_record.handoff_notes,
+            reconciliation=done_record.reconciliation or [],
             posted_by=user_brief(posted_by),  # type: ignore[arg-type]
             posted_at=done_record.posted_at,
             handoff_to=list_done_handoffs(session, done_record.id),
@@ -285,6 +352,12 @@ def plan_to_public(session: Session, plan: Plan) -> PublicPlan:
         public_done = PublicDoneResponse(
             summary=done_record.summary,
             links=done_record.links,
+            # Status per criterion is the substance of "what shipped", but notes carry
+            # internal reasoning and are stripped for the public link.
+            reconciliation=[
+                {"criterion": o.get("criterion"), "status": o.get("status")}
+                for o in (done_record.reconciliation or [])
+            ],
             residual_notes=done_record.residual_notes,
             posted_by_name=posted_by.name if posted_by else "Unknown",
             posted_at=done_record.posted_at,

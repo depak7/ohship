@@ -298,16 +298,21 @@ def post_plan_done(
             body.residual_notes,
             body.handoff_notes,
             body.handoff_to,
+            [item.model_dump() for item in body.reconciliation],
         )
     except PlanTransitionError as e:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=e.message) from e
     session.refresh(plan)
     links = len(body.links)
+    outcomes = (plan.done_record.reconciliation if plan.done_record else []) or []
     analytics.track(
         "done-posted",
         request=request,
         source=_source(request),
         links="3+" if links >= 3 else str(links),
         has_handoff=bool(body.handoff_notes),
+        # Does anyone actually reconcile, and does drift show up when they do?
+        reconciled=bool(body.reconciliation),
+        drifted=any(o.get("status") in ("changed", "dropped") for o in outcomes),
     )
     return plan_to_detail(session, plan)

@@ -65,6 +65,14 @@ export interface Suggestion {
   created_at: string;
 }
 
+export type CriterionStatus = "met" | "changed" | "dropped" | "unreported" | "extra";
+
+export interface CriterionOutcome {
+  criterion: string;
+  status: CriterionStatus;
+  note?: string | null;
+}
+
 export interface DoneRecord {
   id: string;
   plan_id: string;
@@ -72,6 +80,7 @@ export interface DoneRecord {
   links: DoneLink[];
   residual_notes: string | null;
   handoff_notes?: string | null;
+  reconciliation?: CriterionOutcome[];
   posted_by: UserBrief;
   posted_at: string;
   handoff_to?: UserBrief[];
@@ -236,6 +245,7 @@ export const api = {
       residual_notes?: string;
       handoff_notes?: string;
       handoff_to?: string[];
+      reconciliation?: CriterionOutcome[];
     }
   ) =>
     request<PlanDetail>(`/api/v1/plans/${id}/done`, {
@@ -282,4 +292,18 @@ export const STATUS_LABELS: Record<PlanStatus, string> = {
 
 export function googleStartUrl(): string {
   return `${getApiUrl()}/api/v1/auth/google/start`;
+}
+
+/** Mirrors parse_criteria in backend services/helpers.py — the backend is the source of
+ *  truth, this only drives the Done form's per-criterion controls. */
+export function parseCriteria(acceptanceCriteria: string): string[] {
+  const items = (acceptanceCriteria || "")
+    .split("\n")
+    .map((line) => line.match(/^\s*(?:[-*+]\s+(?:\[[ xX]\]\s*)?|\d+[.)]\s+)(.+?)\s*$/))
+    .filter((m): m is RegExpMatchArray => Boolean(m))
+    .map((m) => m[1].trim())
+    .filter(Boolean);
+  if (items.length) return items;
+  const blob = (acceptanceCriteria || "").trim();
+  return blob ? [blob] : [];
 }
