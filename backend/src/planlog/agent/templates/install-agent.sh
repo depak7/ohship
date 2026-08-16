@@ -17,7 +17,7 @@ set -euo pipefail
 REPO="${REPO:-.}"
 API_URL="${PLANLOG_API_URL:-__PLANLOG_DEFAULT_API_URL__}"
 INSTALL_URL="__PLANLOG_INSTALL_URL__"
-GIT_PKG="git+https://github.com/depak7/ohship#subdirectory=backend"
+GIT_PKG="git+https://github.com/depak7/planlog#subdirectory=backend"
 
 usage() {
   cat <<EOF

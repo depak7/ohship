@@ -26,7 +26,7 @@ MARKER_END = "<!-- planlog:end -->"
 MARKER = MARKER_BEGIN  # backwards-compat
 DEFAULT_API_URL = "http://localhost:8000"
 INSTALL_SCRIPT_URL = PUBLIC_INSTALL_URL
-GIT_PACKAGE = "git+https://github.com/depak7/ohship#subdirectory=backend"
+GIT_PACKAGE = "git+https://github.com/depak7/planlog#subdirectory=backend"
 
 HOME = Path.home()
 

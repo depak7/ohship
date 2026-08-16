@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { Member, PlanDetail, UserBrief } from "@/lib/api";
-import { formatWhen } from "@/lib/utils";
 
 /**
  * What to show under a reviewer's name.
@@ -14,10 +13,9 @@ import { formatWhen } from "@/lib/utils";
  * had already been made.
  */
 function reviewerState(plan: PlanDetail, reviewerId: string): { label: string; approved: boolean } {
-  if (plan.approved_by?.id === reviewerId) {
-    const when = formatWhen(plan.approved_at);
-    return { label: when ? `Approved · ${when}` : "Approved", approved: true };
-  }
+  // Just "Approved" here — the sidebar is 16rem wide and a full timestamp truncates. The
+  // lifecycle line under the title carries the when.
+  if (plan.approved_by?.id === reviewerId) return { label: "Approved", approved: true };
   if (plan.status === "changes_requested") return { label: "Changes requested", approved: false };
   if (plan.status === "draft") return { label: "Not yet submitted", approved: false };
   if (plan.status === "in_review") return { label: "Awaiting review", approved: false };
