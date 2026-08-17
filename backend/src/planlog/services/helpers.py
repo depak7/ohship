@@ -18,6 +18,7 @@ from planlog.schemas import (
     SuggestionResponse,
     UserBrief,
 )
+from planlog.services.plans import approval_kind
 from planlog.services.share import share_url
 
 
@@ -328,6 +329,7 @@ def plan_to_detail(session: Session, plan: Plan) -> PlanDetail:
         acceptance_criteria=plan.acceptance_criteria,
         approved_at=plan.approved_at,
         approved_by=user_brief(approved_by),
+        approval_kind=approval_kind(plan),
         suggestions=suggestion_responses,
         done=done_response,
         markdown=plan_to_markdown(plan, reviewers),

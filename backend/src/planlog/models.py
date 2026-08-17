@@ -71,6 +71,8 @@ class Organization(SQLModel, table=True):
     name: str = Field(max_length=255)
     slug: str = Field(max_length=64, unique=True, index=True)
     created_by_id: UUID = Field(foreign_key="users.id")
+    # When true, a plan's own author can't approve it — someone else has to look.
+    require_peer_approval: bool = Field(default=False, nullable=False)
     created_at: datetime = Field(
         default_factory=utcnow,
         sa_column=Column(DateTime(timezone=True), nullable=False),
@@ -141,6 +143,9 @@ class Plan(SQLModel, table=True):
         default=None, sa_column=Column(DateTime(timezone=True))
     )
     approved_by_id: Optional[UUID] = Field(default=None, foreign_key="users.id")
+    # True when post_done created the approval itself because no review ever happened.
+    # Without this, an auto-approval is indistinguishable from a human pressing Approve.
+    approved_on_ship: bool = Field(default=False, nullable=False)
     claimed_by_id: Optional[UUID] = Field(default=None, foreign_key="users.id", index=True)
     visibility: PlanVisibility = Field(default=PlanVisibility.team, index=True)
     share_token: Optional[str] = Field(default=None, max_length=64, unique=True, index=True)

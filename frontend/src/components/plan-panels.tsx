@@ -229,12 +229,20 @@ function Fact({
 }: {
   label: string;
   children: React.ReactNode;
-  tone?: "muted" | "accent";
+  tone?: "muted" | "accent" | "warn";
 }) {
   return (
     <span className="inline-flex items-baseline gap-1.5">
       <span className="text-[var(--muted)]">{label}</span>
-      <span className={tone === "accent" ? "font-medium text-[var(--accent)]" : "font-medium text-[var(--ink)]"}>
+      <span
+        className={
+          tone === "accent"
+            ? "font-medium text-[var(--accent)]"
+            : tone === "warn"
+              ? "font-medium text-[var(--warn)]"
+              : "font-medium text-[var(--ink)]"
+        }
+      >
         {children}
       </span>
     </span>
@@ -251,18 +259,39 @@ export function PlanLifecycle({ plan }: { plan: PlanDetail }) {
   const claimed = plan.claimed_by;
   if (!approved && !claimed) return null;
 
+  // Only a peer approval earns the green tick. Showing "✓ Approved by X" for a plan its own
+  // author waved through — or one nobody looked at — is the thing that makes an approval
+  // record worthless.
+  const kind = plan.approval_kind;
+  const peer = kind === "peer";
+
   return (
     <div className="mt-3 flex flex-wrap items-center gap-x-5 gap-y-1.5 text-sm">
       {approved && (
-        <span className="inline-flex items-center gap-1.5">
-          <span className="text-[var(--accent)]">
-            <CheckIcon />
+        <span className="inline-flex flex-wrap items-center gap-1.5">
+          <span className={peer ? "text-[var(--accent)]" : "text-[var(--warn)]"}>
+            {peer ? <CheckIcon /> : <span className="text-xs font-semibold">!</span>}
           </span>
-          <Fact label="Approved by" tone="accent">
-            {approved.name}
-          </Fact>
+          {kind === "on_ship" ? (
+            <span className="font-medium text-[var(--warn)]">Shipped without review</span>
+          ) : kind === "self" ? (
+            <Fact label="Self-approved by" tone="warn">
+              {approved.name}
+            </Fact>
+          ) : (
+            <Fact label="Approved by" tone="accent">
+              {approved.name}
+            </Fact>
+          )}
           {plan.approved_at && (
             <span className="text-[var(--muted)]">· {formatWhen(plan.approved_at)}</span>
+          )}
+          {!peer && (
+            <span className="text-xs text-[var(--muted)]">
+              {kind === "on_ship"
+                ? "— approval was recorded automatically at Done"
+                : "— the plan's author approved their own work"}
+            </span>
           )}
         </span>
       )}

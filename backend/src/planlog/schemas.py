@@ -201,6 +201,10 @@ class PlanDetail(PlanSummary):
     acceptance_criteria: str
     approved_at: Optional[datetime]
     approved_by: Optional[UserBrief]
+    # peer = someone other than the author approved before code existed
+    # self = the author approved their own plan
+    # on_ship = nobody reviewed; post_done filled it in
+    approval_kind: Optional[Literal["peer", "self", "on_ship"]] = None
     suggestions: list[SuggestionResponse] = Field(default_factory=list)
     done: Optional[DoneResponse] = None
     markdown: str = ""

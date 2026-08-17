@@ -3,7 +3,7 @@ from uuid import UUID
 from fastapi import HTTPException, status
 from sqlmodel import Session, select
 
-from planlog.models import DoneHandoff, DoneRecord, Plan, PlanNotifyRequest, PlanReviewRequest, PlanStatus, Suggestion, User, utcnow
+from planlog.models import DoneHandoff, DoneRecord, Organization, Plan, PlanNotifyRequest, PlanReviewRequest, PlanStatus, Suggestion, User, utcnow
 
 
 class PlanTransitionError(Exception):
@@ -52,6 +52,33 @@ def assert_editable(plan: Plan) -> None:
         )
 
 
+def approval_kind(plan: Plan) -> str | None:
+    """How this plan came to be approved — the distinction the UI must not blur.
+
+    "peer" is the only one that means a second person looked at the plan before code
+    existed. "self" is the author approving their own work; "on_ship" is nobody approving
+    at all, with post_done filling the field in. Research on 25k agentic pull requests
+    found ~79% get a single pair of eyes, so collapsing these three into one green tick
+    is the difference between a review layer and a changelog.
+    """
+    if not plan.approved_by_id:
+        return None
+    if plan.approved_on_ship:
+        return "on_ship"
+    return "self" if plan.approved_by_id == plan.owner_id else "peer"
+
+
+def assert_peer_approval_allowed(session: Session, plan: Plan, actor: User) -> None:
+    """Block self-approval when the org has asked for a second pair of eyes."""
+    if actor.id != plan.owner_id:
+        return
+    org = session.get(Organization, plan.organization_id)
+    if org and org.require_peer_approval:
+        raise PlanTransitionError(
+            "This organization requires a second reviewer — the plan's author can't approve it."
+        )
+
+
 def transition_plan(session: Session, plan: Plan, action: str, actor: User | None = None) -> Plan:
     if action not in TRANSITIONS:
         raise PlanTransitionError(f"Unknown action: {action}")
@@ -66,8 +93,10 @@ def transition_plan(session: Session, plan: Plan, action: str, actor: User | Non
     plan.updated_at = utcnow()
 
     if action == "approve_plan" and actor:
+        assert_peer_approval_allowed(session, plan, actor)
         plan.approved_at = utcnow()
         plan.approved_by_id = actor.id
+        plan.approved_on_ship = False
     elif action == "claim_plan" and actor:
         plan.claimed_by_id = actor.id
 

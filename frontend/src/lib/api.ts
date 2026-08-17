@@ -92,6 +92,7 @@ export interface PlanDetail extends PlanSummary {
   acceptance_criteria: string;
   approved_at: string | null;
   approved_by: UserBrief | null;
+  approval_kind?: "peer" | "self" | "on_ship" | null;
   suggestions: Suggestion[];
   done: DoneRecord | null;
   markdown: string;

@@ -3,7 +3,7 @@ from uuid import UUID
 
 from sqlmodel import Session, select
 
-from planlog.models import DoneHandoff, DoneRecord, Plan, PlanStatus, User, utcnow
+from planlog.models import DoneHandoff, DoneRecord, Organization, Plan, PlanStatus, User, utcnow
 from planlog.services.helpers import build_reconciliation
 from planlog.services.orgs import require_membership
 from planlog.services.plans import (
@@ -39,10 +39,19 @@ def post_done(
     if existing is not None:
         raise PlanTransitionError("Done record already exists for this plan")
 
-    # Ship directly: self-approve and claim when intermediate steps were skipped.
+    # Ship directly: fill in approval and claim when intermediate steps were skipped.
+    # approved_on_ship marks this as "nobody reviewed", so the UI can't present it as a
+    # colleague having pressed Approve.
     if not plan.approved_by_id:
+        org = session.get(Organization, plan.organization_id)
+        if org and org.require_peer_approval:
+            raise PlanTransitionError(
+                "This organization requires an approved plan before Done — "
+                "ask a teammate to review it first."
+            )
         plan.approved_at = utcnow()
         plan.approved_by_id = actor.id
+        plan.approved_on_ship = True
     if not plan.claimed_by_id:
         plan.claimed_by_id = actor.id
 
